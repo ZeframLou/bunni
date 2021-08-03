@@ -1,0 +1,13 @@
+#Buidler files
+cache
+artifacts
+
+node_modules
+secret.json
+package-lock.json
+
+#solidity-coverage files
+coverage
+coverage.json
+
+docgen
