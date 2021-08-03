@@ -1,5 +1,5 @@
 {
-  "name": "hardhat-template",
+  "name": "bugsbuni",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -10,8 +10,8 @@
     "prepare": "husky install"
   },
   "keywords": [],
-  "author": "Zefram Lou",
-  "license": "GPL-3.0-or-later",
+  "author": "zefram.eth",
+  "license": "GPL-3.0",
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-etherscan": "^2.1.1",
