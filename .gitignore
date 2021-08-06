@@ -1,14 +1,2 @@
-#Buidler files
-cache
-artifacts
-
 node_modules
-secret.json
-
-#solidity-coverage files
-coverage
-coverage.json
-
-docgen
-
-typechain/out
+out
