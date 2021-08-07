@@ -16,11 +16,32 @@ abstract contract LiquidityManagement is
     IUniswapV3MintCallback,
     PeripheryPayments
 {
-    function __LiquidityManagement_init(IUniswapV3Pool _pool, address _WETH9)
-        internal
-        initializer
-    {
-        __PeripheryPayments_init(_pool, _WETH9);
+    /// @notice The Uniswap v3 pool
+    IUniswapV3Pool public pool;
+    /// @notice The Uniswap pool's token0
+    address public token0;
+    /// @notice The Uniswap pool's token1
+    address public token1;
+    /// @notice The lower tick of the liquidity position
+    int24 public tickLower;
+    /// @notice The upper tick of the liquidity position
+    int24 public tickUpper;
+
+    function __LiquidityManagement_init(
+        IUniswapV3Pool _pool,
+        int24 _tickLower,
+        int24 _tickUpper,
+        address _WETH9
+    ) internal initializer {
+        // init parent contracts
+        __PeripheryPayments_init(_WETH9);
+
+        // init self
+        pool = _pool;
+        token0 = _pool.token0();
+        token1 = _pool.token1();
+        tickLower = _tickLower;
+        tickUpper = _tickUpper;
     }
 
     struct MintCallbackData {
@@ -44,8 +65,6 @@ abstract contract LiquidityManagement is
 
     struct AddLiquidityParams {
         address recipient;
-        int24 tickLower;
-        int24 tickUpper;
         uint256 amount0Desired;
         uint256 amount1Desired;
         uint256 amount0Min;
@@ -62,16 +81,14 @@ abstract contract LiquidityManagement is
         )
     {
         IUniswapV3Pool _pool = pool;
+        int24 _tickLower = tickLower;
+        int24 _tickUpper = tickUpper;
 
         // compute the liquidity amount
         {
             (uint160 sqrtPriceX96, , , , , , ) = _pool.slot0();
-            uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(
-                params.tickLower
-            );
-            uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(
-                params.tickUpper
-            );
+            uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(_tickLower);
+            uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(_tickUpper);
 
             liquidity = LiquidityAmounts.getLiquidityForAmounts(
                 sqrtPriceX96,
@@ -84,8 +101,8 @@ abstract contract LiquidityManagement is
 
         (amount0, amount1) = _pool.mint(
             params.recipient,
-            params.tickLower,
-            params.tickUpper,
+            _tickLower,
+            _tickUpper,
             liquidity,
             abi.encode(MintCallbackData({payer: msg.sender}))
         );

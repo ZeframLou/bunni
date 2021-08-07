@@ -16,11 +16,8 @@ abstract contract PeripheryPayments is
     IPeripheryPayments,
     PeripheryImmutableState
 {
-    function __PeripheryPayments_init(IUniswapV3Pool _pool, address _WETH9)
-        internal
-        initializer
-    {
-        __PeripheryImmutableState_init(_pool, _WETH9);
+    function __PeripheryPayments_init(address _WETH9) internal initializer {
+        __PeripheryImmutableState_init(_WETH9);
     }
 
     receive() external payable {
