@@ -101,6 +101,15 @@ contract CompoundedBuni is
         uint256 deadline;
     }
 
+    /// @notice Decreases the amount of liquidity in the position and sends the tokens to the sender.
+    /// @param params tokenId The ID of the token for which liquidity is being decreased,
+    /// shares The amount of ERC20 tokens (this) to burn,
+    /// amount0Min The minimum amount of token0 that should be accounted for the burned liquidity,
+    /// amount1Min The minimum amount of token1 that should be accounted for the burned liquidity,
+    /// deadline The time by which the transaction must be included to effect the change
+    /// @return liquidityReduction The amount of liquidity decrease
+    /// @return amount0 The amount of token0 accounted to the position's tokens owed
+    /// @return amount1 The amount of token1 accounted to the position's tokens owed
     function withdraw(WithdrawParams calldata params)
         external
         returns (
@@ -116,6 +125,7 @@ contract CompoundedBuni is
 
     function compound() external {}
 
+    /// @dev See {CompoundedBuni::deposit}
     function _deposit(DepositParams calldata params, uint128 existingLiquidity)
         internal
         returns (
@@ -166,6 +176,7 @@ contract CompoundedBuni is
 
     function _depositOneside() internal {}
 
+    /// @dev See {CompoundedBuni::withdraw}
     function _withdraw(WithdrawParams calldata params)
         internal
         returns (
@@ -238,6 +249,10 @@ contract CompoundedBuni is
 
     function _compound() internal {}
 
+    /// @notice Mints share tokens (this) to the sender based on the amount of liquidity added.
+    /// @param newLiquidity The amount of liquidity added
+    /// @param existingLiquidity The amount of existing liquidity before the add
+    /// @return shares The amount of share tokens minted to the sender.
     function _mintShares(uint128 newLiquidity, uint128 existingLiquidity)
         internal
         returns (uint256 shares)
