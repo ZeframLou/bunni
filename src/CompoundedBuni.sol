@@ -32,9 +32,9 @@ contract CompoundedBuni is
     /// @notice the fee growth of the aggregate position as of the last action on the individual position
     uint256 public feeGrowthInside0LastX128;
     uint256 public feeGrowthInside1LastX128;
-    /// @notice how many uncollected tokens are owed to the position, as of the last computation
-    uint128 public tokensOwed0;
-    uint128 public tokensOwed1;
+    /// @notice how many uncollected fee tokens are owed to the position, as of the last computation
+    uint128 public feesOwed0;
+    uint128 public feesOwed1;
 
     /// @notice Initializes this contract.
     function initialize(
@@ -94,7 +94,23 @@ contract CompoundedBuni is
 
     function depositOneside() external {}
 
-    function withdraw() external {}
+    struct WithdrawParams {
+        uint256 shares;
+        uint256 amount0Min;
+        uint256 amount1Min;
+        uint256 deadline;
+    }
+
+    function withdraw(WithdrawParams calldata params)
+        external
+        returns (
+            uint128 liquidityReduction,
+            uint256 amount0,
+            uint256 amount1
+        )
+    {
+        return _withdraw(params);
+    }
 
     function withdrawOneside() external {}
 
@@ -128,15 +144,15 @@ contract CompoundedBuni is
 
         ) = pool.positions(positionKey);
 
-        // record position info
-        tokensOwed0 += uint128(
+        // update position
+        feesOwed0 += uint128(
             FullMath.mulDiv(
                 updatedFeeGrowthInside0LastX128 - feeGrowthInside0LastX128,
                 existingLiquidity,
                 FixedPoint128.Q128
             )
         );
-        tokensOwed1 += uint128(
+        feesOwed1 += uint128(
             FullMath.mulDiv(
                 updatedFeeGrowthInside1LastX128 - feeGrowthInside1LastX128,
                 existingLiquidity,
@@ -150,7 +166,73 @@ contract CompoundedBuni is
 
     function _depositOneside() internal {}
 
-    function _withdraw() internal {}
+    function _withdraw(WithdrawParams calldata params)
+        internal
+        returns (
+            uint128 liquidityReduction,
+            uint256 amount0,
+            uint256 amount1
+        )
+    {
+        // burn shares
+        require(params.shares > 0);
+        uint256 currentTotalSupply = totalSupply();
+        _burn(msg.sender, params.shares);
+        // at this point of execution we know param.shares <= currentTotalSupply
+        // since otherwise the _burn() call would've reverted
+
+        // burn liquidity from pool
+        uint128 positionLiquidity = liquidity;
+        // type cast is safe because we know liquidityReduction <= positionLiquidity
+        liquidityReduction = uint128(
+            FullMath.mulDiv(
+                positionLiquidity,
+                params.shares,
+                currentTotalSupply
+            )
+        );
+        (amount0, amount1) = pool.burn(
+            tickLower,
+            tickUpper,
+            liquidityReduction
+        );
+        require(
+            amount0 >= params.amount0Min && amount1 >= params.amount1Min,
+            "Price slippage check"
+        );
+
+        // update position
+        // this is now updated to the current transaction
+        (
+            ,
+            uint256 updatedFeeGrowthInside0LastX128,
+            uint256 updatedFeeGrowthInside1LastX128,
+            ,
+
+        ) = pool.positions(positionKey);
+        feesOwed0 += uint128(
+            FullMath.mulDiv(
+                updatedFeeGrowthInside0LastX128 - feeGrowthInside0LastX128,
+                positionLiquidity,
+                FixedPoint128.Q128
+            )
+        );
+        feesOwed1 += uint128(
+            FullMath.mulDiv(
+                updatedFeeGrowthInside1LastX128 - feeGrowthInside1LastX128,
+                positionLiquidity,
+                FixedPoint128.Q128
+            )
+        );
+        feeGrowthInside0LastX128 = updatedFeeGrowthInside0LastX128;
+        feeGrowthInside1LastX128 = updatedFeeGrowthInside1LastX128;
+        // subtraction is safe because we checked positionLiquidity >= liquidityReduction
+        liquidity = positionLiquidity - liquidityReduction;
+
+        // pay tokens to sender
+        pay(token0, address(this), msg.sender, amount0);
+        pay(token1, address(this), msg.sender, amount1);
+    }
 
     function _withdrawOneside() internal {}
 
