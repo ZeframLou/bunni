@@ -52,34 +52,20 @@ contract CompoundedBuniTest is DSTest, UniswapV3FactoryDeployer {
     }
 
     function test_deposit() public {
-        // mint tokens
-        token0.mint(address(this), PRECISION);
-        token1.mint(address(this), PRECISION);
-
-        // approve tokens to buni
-        token0.approve(address(buni), type(uint256).max);
-        token1.approve(address(buni), type(uint256).max);
-
-        // deposit tokens
-        CompoundedBuni.DepositParams memory depositParams = CompoundedBuni
-            .DepositParams({
-                amount0Desired: PRECISION,
-                amount1Desired: PRECISION,
-                amount0Min: PRECISION,
-                amount1Min: PRECISION,
-                deadline: block.timestamp
-            });
+        // make deposit
+        uint256 depositAmount0 = PRECISION;
+        uint256 depositAmount1 = PRECISION;
         (
             uint256 shares,
             uint128 newLiquidity,
             uint256 amount0,
             uint256 amount1
-        ) = buni.deposit(depositParams);
+        ) = _makeDeposit(depositAmount0, depositAmount1);
 
         // check return values
         assertEqDecimal(shares, newLiquidity, DECIMALS);
-        assertEqDecimal(amount0, PRECISION, DECIMALS);
-        assertEqDecimal(amount1, PRECISION, DECIMALS);
+        assertEqDecimal(amount0, depositAmount0, DECIMALS);
+        assertEqDecimal(amount1, depositAmount1, DECIMALS);
 
         // check token balances
         assertEqDecimal(token0.balanceOf(address(this)), 0, DECIMALS);
@@ -87,25 +73,12 @@ contract CompoundedBuniTest is DSTest, UniswapV3FactoryDeployer {
     }
 
     function test_withdraw() public {
-        // mint tokens
-        token0.mint(address(this), PRECISION);
-        token1.mint(address(this), PRECISION);
-
-        // approve tokens to buni
-        token0.approve(address(buni), type(uint256).max);
-        token1.approve(address(buni), type(uint256).max);
-
-        // deposit tokens
-        CompoundedBuni.DepositParams memory depositParams = CompoundedBuni
-            .DepositParams({
-                amount0Desired: PRECISION,
-                amount1Desired: PRECISION,
-                amount0Min: PRECISION,
-                amount1Min: PRECISION,
-                deadline: block.timestamp
-            });
-        (uint256 shares, uint128 newLiquidity, , ) = buni.deposit(
-            depositParams
+        // make deposit
+        uint256 depositAmount0 = PRECISION;
+        uint256 depositAmount1 = PRECISION;
+        (uint256 shares, uint128 newLiquidity, , ) = _makeDeposit(
+            depositAmount0,
+            depositAmount1
         );
 
         // withdraw
@@ -124,19 +97,48 @@ contract CompoundedBuniTest is DSTest, UniswapV3FactoryDeployer {
 
         // check return values
         // withdraw amount less than original due to rounding
-        assertEqDecimal(withdrawAmount0, PRECISION - 1, DECIMALS);
-        assertEqDecimal(withdrawAmount1, PRECISION - 1, DECIMALS);
+        assertEqDecimal(withdrawAmount0, depositAmount0 - 1, DECIMALS);
+        assertEqDecimal(withdrawAmount1, depositAmount1 - 1, DECIMALS);
 
         // check token balances
         assertEqDecimal(
             token0.balanceOf(address(this)),
-            PRECISION - 1,
+            depositAmount0 - 1,
             DECIMALS
         );
         assertEqDecimal(
             token1.balanceOf(address(this)),
-            PRECISION - 1,
+            depositAmount1 - 1,
             DECIMALS
         );
+    }
+
+    function _makeDeposit(uint256 depositAmount0, uint256 depositAmount1)
+        internal
+        returns (
+            uint256 shares,
+            uint128 newLiquidity,
+            uint256 amount0,
+            uint256 amount1
+        )
+    {
+        // mint tokens
+        token0.mint(address(this), depositAmount0);
+        token1.mint(address(this), depositAmount1);
+
+        // approve tokens to buni
+        token0.approve(address(buni), type(uint256).max);
+        token1.approve(address(buni), type(uint256).max);
+
+        // deposit tokens
+        CompoundedBuni.DepositParams memory depositParams = CompoundedBuni
+            .DepositParams({
+                amount0Desired: depositAmount0,
+                amount1Desired: depositAmount1,
+                amount0Min: depositAmount0,
+                amount1Min: depositAmount1,
+                deadline: block.timestamp
+            });
+        return buni.deposit(depositParams);
     }
 }
