@@ -1,4 +1,5 @@
 export DAPP_SOLC_VERSION=0.7.6
 export DAPP_BUILD_OPTIMIZE=1
-export DAPP_BUILD_OPTIMIZE_RUNS=200
-export DAPP_REMAPPINGS=$(cat remappings.txt)
+export DAPP_BUILD_OPTIMIZE_RUNS=1000000000
+export DAPP_REMAPPINGS=$(cat remappings.txt)$'\n'$(dapp remappings)
+export DAPP_TEST_VERBOSITY=1
