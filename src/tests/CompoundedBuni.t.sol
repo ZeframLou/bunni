@@ -80,5 +80,63 @@ contract CompoundedBuniTest is DSTest, UniswapV3FactoryDeployer {
         assertEqDecimal(shares, newLiquidity, DECIMALS);
         assertEqDecimal(amount0, PRECISION, DECIMALS);
         assertEqDecimal(amount1, PRECISION, DECIMALS);
+
+        // check token balances
+        assertEqDecimal(token0.balanceOf(address(this)), 0, DECIMALS);
+        assertEqDecimal(token1.balanceOf(address(this)), 0, DECIMALS);
+    }
+
+    function test_withdraw() public {
+        // mint tokens
+        token0.mint(address(this), PRECISION);
+        token1.mint(address(this), PRECISION);
+
+        // approve tokens to buni
+        token0.approve(address(buni), type(uint256).max);
+        token1.approve(address(buni), type(uint256).max);
+
+        // deposit tokens
+        CompoundedBuni.DepositParams memory depositParams = CompoundedBuni
+            .DepositParams({
+                amount0Desired: PRECISION,
+                amount1Desired: PRECISION,
+                amount0Min: PRECISION,
+                amount1Min: PRECISION,
+                deadline: block.timestamp
+            });
+        (uint256 shares, uint128 newLiquidity, , ) = buni.deposit(
+            depositParams
+        );
+
+        // withdraw
+        CompoundedBuni.WithdrawParams memory withdrawParams = CompoundedBuni
+            .WithdrawParams({
+                shares: shares,
+                amount0Min: 0,
+                amount1Min: 0,
+                deadline: block.timestamp
+            });
+        (
+            uint128 liquidityReduction,
+            uint256 withdrawAmount0,
+            uint256 withdrawAmount1
+        ) = buni.withdraw(withdrawParams);
+
+        // check return values
+        // withdraw amount less than original due to rounding
+        assertEqDecimal(withdrawAmount0, PRECISION - 1, DECIMALS);
+        assertEqDecimal(withdrawAmount1, PRECISION - 1, DECIMALS);
+
+        // check token balances
+        assertEqDecimal(
+            token0.balanceOf(address(this)),
+            PRECISION - 1,
+            DECIMALS
+        );
+        assertEqDecimal(
+            token1.balanceOf(address(this)),
+            PRECISION - 1,
+            DECIMALS
+        );
     }
 }

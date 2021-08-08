@@ -194,6 +194,8 @@ contract CompoundedBuni is
 
         // burn liquidity from pool
         uint128 positionLiquidity = liquidity;
+        int24 _tickLower = tickLower;
+        int24 _tickUpper = tickUpper;
         // type cast is safe because we know liquidityReduction <= positionLiquidity
         liquidityReduction = uint128(
             FullMath.mulDiv(
@@ -203,13 +205,22 @@ contract CompoundedBuni is
             )
         );
         (amount0, amount1) = pool.burn(
-            tickLower,
-            tickUpper,
+            _tickLower,
+            _tickUpper,
             liquidityReduction
         );
         require(
             amount0 >= params.amount0Min && amount1 >= params.amount1Min,
             "Price slippage check"
+        );
+
+        // collect tokens
+        (amount0, amount1) = pool.collect(
+            msg.sender,
+            _tickLower,
+            _tickUpper,
+            uint128(amount0),
+            uint128(amount1)
         );
 
         // update position
@@ -239,10 +250,6 @@ contract CompoundedBuni is
         feeGrowthInside1LastX128 = updatedFeeGrowthInside1LastX128;
         // subtraction is safe because we checked positionLiquidity >= liquidityReduction
         liquidity = positionLiquidity - liquidityReduction;
-
-        // pay tokens to sender
-        pay(token0, address(this), msg.sender, amount0);
-        pay(token1, address(this), msg.sender, amount1);
     }
 
     function _withdrawOneside() internal {}
