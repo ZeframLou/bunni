@@ -6,7 +6,7 @@
   "scripts": {
     "test": "dapp test",
     "build": "dapp build",
-    "prettier": "npx prettier --write '**/*.js' '**/*.ts' 'contracts/**/*.sol' '**/*.json' '**/*.md' '**/*.sh'",
+    "prettier": "npx prettier --write 'src/**/*.sol'",
     "prepare": "husky install"
   },
   "keywords": [],

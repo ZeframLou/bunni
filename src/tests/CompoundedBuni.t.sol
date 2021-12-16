@@ -27,6 +27,7 @@ contract CompoundedBuniTest is DSTest, UniswapV3FactoryDeployer {
     uint24 fee;
 
     function setUp() public {
+        // initialize uniswap
         token0 = new ERC20Mock();
         token1 = new ERC20Mock();
         if (address(token0) >= address(token1)) {
@@ -40,6 +41,7 @@ contract CompoundedBuniTest is DSTest, UniswapV3FactoryDeployer {
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
         weth = new WETH9Mock();
 
+        // initialize buni
         buni = new CompoundedBuni();
         buni.initialize(
             "CompoundedBuni",
@@ -49,6 +51,10 @@ contract CompoundedBuniTest is DSTest, UniswapV3FactoryDeployer {
             100,
             address(weth)
         );
+
+        // approve tokens to buni
+        token0.approve(address(buni), type(uint256).max);
+        token1.approve(address(buni), type(uint256).max);
     }
 
     function test_deposit() public {
@@ -76,10 +82,7 @@ contract CompoundedBuniTest is DSTest, UniswapV3FactoryDeployer {
         // make deposit
         uint256 depositAmount0 = PRECISION;
         uint256 depositAmount1 = PRECISION;
-        (uint256 shares, uint128 newLiquidity, , ) = _makeDeposit(
-            depositAmount0,
-            depositAmount1
-        );
+        (uint256 shares, , , ) = _makeDeposit(depositAmount0, depositAmount1);
 
         // withdraw
         CompoundedBuni.WithdrawParams memory withdrawParams = CompoundedBuni
@@ -89,11 +92,9 @@ contract CompoundedBuniTest is DSTest, UniswapV3FactoryDeployer {
                 amount1Min: 0,
                 deadline: block.timestamp
             });
-        (
-            uint128 liquidityReduction,
-            uint256 withdrawAmount0,
-            uint256 withdrawAmount1
-        ) = buni.withdraw(withdrawParams);
+        (, uint256 withdrawAmount0, uint256 withdrawAmount1) = buni.withdraw(
+            withdrawParams
+        );
 
         // check return values
         // withdraw amount less than original due to rounding
@@ -125,10 +126,6 @@ contract CompoundedBuniTest is DSTest, UniswapV3FactoryDeployer {
         // mint tokens
         token0.mint(address(this), depositAmount0);
         token1.mint(address(this), depositAmount1);
-
-        // approve tokens to buni
-        token0.approve(address(buni), type(uint256).max);
-        token1.approve(address(buni), type(uint256).max);
 
         // deposit tokens
         CompoundedBuni.DepositParams memory depositParams = CompoundedBuni
