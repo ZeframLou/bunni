@@ -17,12 +17,12 @@ import {PeripheryValidation} from "@uniswap/v3-periphery/contracts/base/Peripher
 import {ERC20} from "./lib/ERC20.sol";
 import {LiquidityManagement} from "./uniswap/LiquidityManagement.sol";
 
-/// @title CompoundedBuni
+/// @title Bunni
 /// @author zefram.eth
 /// @notice A fractionalized Uniswap v3 LP position represented by an ERC20 token.
 /// Supports one-sided liquidity adding and compounding fees earned back into the
 /// liquidity position.
-contract CompoundedBuni is
+contract Bunni is
     ERC20,
     LiquidityManagement,
     Multicall,
@@ -144,7 +144,7 @@ contract CompoundedBuni is
         return _compound();
     }
 
-    /// @dev See {CompoundedBuni::deposit}
+    /// @dev See {Bunni::deposit}
     function _deposit(DepositParams calldata params, uint128 existingLiquidity)
         internal
         returns (
@@ -197,7 +197,7 @@ contract CompoundedBuni is
 
     function _depositOneside() internal {}
 
-    /// @dev See {CompoundedBuni::withdraw}
+    /// @dev See {Bunni::withdraw}
     function _withdraw(WithdrawParams calldata params)
         internal
         returns (
@@ -278,7 +278,7 @@ contract CompoundedBuni is
 
     function _withdrawOneside() internal {}
 
-    /// @dev See {CompoundedBuni::compound}
+    /// @dev See {Bunni::compound}
     function _compound()
         internal
         returns (

@@ -9,12 +9,12 @@ import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {IUniswapV3Factory} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
-import {CompoundedBuni} from "../CompoundedBuni.sol";
+import {Bunni} from "../Bunni.sol";
 import {ERC20Mock} from "./mocks/ERC20Mock.sol";
 import {WETH9Mock} from "./mocks/WETH9Mock.sol";
 import {UniswapV3FactoryDeployer} from "./lib/UniswapV3FactoryDeployer.sol";
 
-contract CompoundedBuniTest is DSTest, UniswapV3FactoryDeployer {
+contract BunniTest is DSTest, UniswapV3FactoryDeployer {
     uint256 constant PRECISION = 10**18;
     uint8 constant DECIMALS = 18;
 
@@ -23,7 +23,7 @@ contract CompoundedBuniTest is DSTest, UniswapV3FactoryDeployer {
     ERC20Mock token0;
     ERC20Mock token1;
     WETH9Mock weth;
-    CompoundedBuni bunni;
+    Bunni bunni;
     uint24 fee;
 
     function setUp() public {
@@ -42,8 +42,8 @@ contract CompoundedBuniTest is DSTest, UniswapV3FactoryDeployer {
         weth = new WETH9Mock();
 
         // initialize bunni
-        bunni = new CompoundedBuni(
-            "CompoundedBuni LP",
+        bunni = new Bunni(
+            "Bunni LP",
             "BUNNI-LP",
             pool,
             -100,
@@ -85,14 +85,13 @@ contract CompoundedBuniTest is DSTest, UniswapV3FactoryDeployer {
         (uint256 shares, , , ) = _makeDeposit(depositAmount0, depositAmount1);
 
         // withdraw
-        CompoundedBuni.WithdrawParams memory withdrawParams = CompoundedBuni
-            .WithdrawParams({
-                recipient: address(this),
-                shares: shares,
-                amount0Min: 0,
-                amount1Min: 0,
-                deadline: block.timestamp
-            });
+        Bunni.WithdrawParams memory withdrawParams = Bunni.WithdrawParams({
+            recipient: address(this),
+            shares: shares,
+            amount0Min: 0,
+            amount1Min: 0,
+            deadline: block.timestamp
+        });
         (, uint256 withdrawAmount0, uint256 withdrawAmount1) = bunni.withdraw(
             withdrawParams
         );
@@ -131,14 +130,13 @@ contract CompoundedBuniTest is DSTest, UniswapV3FactoryDeployer {
 
         // deposit tokens
         // max slippage is 1%
-        CompoundedBuni.DepositParams memory depositParams = CompoundedBuni
-            .DepositParams({
-                amount0Desired: depositAmount0,
-                amount1Desired: depositAmount1,
-                amount0Min: (depositAmount0 * 99) / 100,
-                amount1Min: (depositAmount1 * 99) / 100,
-                deadline: block.timestamp
-            });
+        Bunni.DepositParams memory depositParams = Bunni.DepositParams({
+            amount0Desired: depositAmount0,
+            amount1Desired: depositAmount1,
+            amount0Min: (depositAmount0 * 99) / 100,
+            amount1Min: (depositAmount1 * 99) / 100,
+            deadline: block.timestamp
+        });
         return bunni.deposit(depositParams);
     }
 }
