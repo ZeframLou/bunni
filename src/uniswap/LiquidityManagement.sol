@@ -9,23 +9,24 @@ import {IUniswapV3MintCallback} from "@uniswap/v3-core/contracts/interfaces/call
 import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
 import {PeripheryPayments} from "./PeripheryPayments.sol";
+import {ILiquidityManagement} from "../interfaces/ILiquidityManagement.sol";
 
 /// @title Liquidity management functions
 /// @notice Internal functions for safely managing liquidity in Uniswap V3
 abstract contract LiquidityManagement is
-    IUniswapV3MintCallback,
+    ILiquidityManagement,
     PeripheryPayments
 {
     /// @notice The Uniswap v3 pool
-    IUniswapV3Pool public immutable pool;
+    IUniswapV3Pool public immutable override pool;
     /// @notice The Uniswap pool's token0
-    address public immutable token0;
+    address public immutable override token0;
     /// @notice The Uniswap pool's token1
-    address public immutable token1;
+    address public immutable override token1;
     /// @notice The lower tick of the liquidity position
-    int24 public immutable tickLower;
+    int24 public immutable override tickLower;
     /// @notice The upper tick of the liquidity position
-    int24 public immutable tickUpper;
+    int24 public immutable override tickUpper;
 
     constructor(
         IUniswapV3Pool _pool,

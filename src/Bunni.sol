@@ -15,6 +15,7 @@ import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/Liquid
 import {PeripheryValidation} from "@uniswap/v3-periphery/contracts/base/PeripheryValidation.sol";
 
 import {ERC20} from "./lib/ERC20.sol";
+import {IBunni} from "./interfaces/IBunni.sol";
 import {LiquidityManagement} from "./uniswap/LiquidityManagement.sol";
 
 /// @title Bunni
@@ -23,6 +24,7 @@ import {LiquidityManagement} from "./uniswap/LiquidityManagement.sol";
 /// Supports one-sided liquidity adding and compounding fees earned back into the
 /// liquidity position.
 contract Bunni is
+    IBunni,
     ERC20,
     LiquidityManagement,
     Multicall,
@@ -31,6 +33,7 @@ contract Bunni is
 {
     /// @notice the key of this LP position in the Uniswap pool
     bytes32 public immutable positionKey;
+
     /// @notice the fee growth of the aggregate position as of the last action on the individual position
     uint256 public feeGrowthInside0LastX128;
     uint256 public feeGrowthInside1LastX128;
@@ -58,27 +61,15 @@ contract Bunni is
         );
     }
 
-    struct DepositParams {
-        uint256 amount0Desired;
-        uint256 amount1Desired;
-        uint256 amount0Min;
-        uint256 amount1Min;
-        uint256 deadline;
-    }
+    /// -----------------------------------------------------------
+    /// External functions
+    /// -----------------------------------------------------------
 
-    /// @notice Increases the amount of liquidity in a position, with tokens paid by the `msg.sender`
-    /// @param params amount0Desired The desired amount of token0 to be spent,
-    /// amount1Desired The desired amount of token1 to be spent,
-    /// amount0Min The minimum amount of token0 to spend, which serves as a slippage check,
-    /// amount1Min The minimum amount of token1 to spend, which serves as a slippage check,
-    /// deadline The time by which the transaction must be included to effect the change
-    /// @return shares The new tokens (this) minted to the sender
-    /// @return addedLiquidity The new liquidity amount as a result of the increase
-    /// @return amount0 The amount of token0 to acheive resulting liquidity
-    /// @return amount1 The amount of token1 to acheive resulting liquidity
+    /// @inheritdoc IBunni
     function deposit(DepositParams calldata params)
         external
         payable
+        override
         checkDeadline(params.deadline)
         returns (
             uint256 shares,
@@ -97,26 +88,10 @@ contract Bunni is
 
     function depositOneside() external {}
 
-    struct WithdrawParams {
-        address recipient;
-        uint256 shares;
-        uint256 amount0Min;
-        uint256 amount1Min;
-        uint256 deadline;
-    }
-
-    /// @notice Decreases the amount of liquidity in the position and sends the tokens to the sender.
-    /// If withdrawing ETH, need to follow up with unwrapWETH9() and sweepToken()
-    /// @param params recipient The user if not withdrawing ETH, address(0) if withdrawing ETH
-    /// shares The amount of ERC20 tokens (this) to burn,
-    /// amount0Min The minimum amount of token0 that should be accounted for the burned liquidity,
-    /// amount1Min The minimum amount of token1 that should be accounted for the burned liquidity,
-    /// deadline The time by which the transaction must be included to effect the change
-    /// @return removedLiquidity The amount of liquidity decrease
-    /// @return amount0 The amount of token0 withdrawn to the recipient
-    /// @return amount1 The amount of token1 withdrawn to the recipient
+    /// @inheritdoc IBunni
     function withdraw(WithdrawParams calldata params)
         external
+        override
         checkDeadline(params.deadline)
         returns (
             uint128 removedLiquidity,
@@ -129,12 +104,10 @@ contract Bunni is
 
     function withdrawOneside() external {}
 
-    /// @notice Claims the trading fees earned and uses it to add liquidity.
-    /// @return addedLiquidity The new liquidity amount as a result of the increase
-    /// @return amount0 The amount of token0 added to the liquidity position
-    /// @return amount1 The amount of token1 added to the liquidity position
+    /// @inheritdoc IBunni
     function compound()
         external
+        override
         returns (
             uint128 addedLiquidity,
             uint256 amount0,
@@ -143,6 +116,10 @@ contract Bunni is
     {
         return _compound();
     }
+
+    /// -----------------------------------------------------------
+    /// Internal functions
+    /// -----------------------------------------------------------
 
     /// @dev See {Bunni::deposit}
     function _deposit(DepositParams calldata params, uint128 existingLiquidity)

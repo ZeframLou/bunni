@@ -2,43 +2,34 @@
 pragma solidity 0.7.6;
 
 import {SafeMath} from "@openzeppelin/contracts/math/SafeMath.sol";
+import {IERC20Permit} from "@openzeppelin/contracts/drafts/IERC20Permit.sol";
+
+import {IERC20} from "../interfaces/IERC20.sol";
 
 /// @notice Modern and gas efficient ERC20 + EIP-2612 implementation.
 /// @author Modified from solmate (https://github.com/Rari-Capital/solmate/blob/main/src/tokens/ERC20.sol)
-abstract contract ERC20 {
+abstract contract ERC20 is IERC20 {
     using SafeMath for uint256;
-
-    /*///////////////////////////////////////////////////////////////
-                                  EVENTS
-    //////////////////////////////////////////////////////////////*/
-
-    event Transfer(address indexed from, address indexed to, uint256 amount);
-
-    event Approval(
-        address indexed owner,
-        address indexed spender,
-        uint256 amount
-    );
 
     /*///////////////////////////////////////////////////////////////
                              METADATA STORAGE
     //////////////////////////////////////////////////////////////*/
 
-    string public name;
+    string public override name;
 
-    string public symbol;
+    string public override symbol;
 
-    uint8 public immutable decimals;
+    uint8 public immutable override decimals;
 
     /*///////////////////////////////////////////////////////////////
                               ERC20 STORAGE
     //////////////////////////////////////////////////////////////*/
 
-    uint256 public totalSupply;
+    uint256 public override totalSupply;
 
-    mapping(address => uint256) public balanceOf;
+    mapping(address => uint256) public override balanceOf;
 
-    mapping(address => mapping(address => uint256)) public allowance;
+    mapping(address => mapping(address => uint256)) public override allowance;
 
     /*///////////////////////////////////////////////////////////////
                            EIP-2612 STORAGE
@@ -53,7 +44,7 @@ abstract contract ERC20 {
 
     bytes32 internal immutable INITIAL_DOMAIN_SEPARATOR;
 
-    mapping(address => uint256) public nonces;
+    mapping(address => uint256) public override nonces;
 
     /*///////////////////////////////////////////////////////////////
                                CONSTRUCTOR
@@ -79,6 +70,7 @@ abstract contract ERC20 {
     function approve(address spender, uint256 amount)
         public
         virtual
+        override
         returns (bool)
     {
         allowance[msg.sender][spender] = amount;
@@ -91,6 +83,7 @@ abstract contract ERC20 {
     function transfer(address to, uint256 amount)
         public
         virtual
+        override
         returns (bool)
     {
         balanceOf[msg.sender] = balanceOf[msg.sender].sub(amount);
@@ -108,7 +101,7 @@ abstract contract ERC20 {
         address from,
         address to,
         uint256 amount
-    ) public virtual returns (bool) {
+    ) public virtual override returns (bool) {
         uint256 _allowance = allowance[from][msg.sender];
         if (_allowance != type(uint256).max) {
             allowance[from][msg.sender] = _allowance.sub(amount);
@@ -137,7 +130,7 @@ abstract contract ERC20 {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) public virtual {
+    ) public virtual override {
         require(deadline >= block.timestamp, "PERMIT_DEADLINE_EXPIRED");
 
         // Unchecked because the only math done is incrementing
@@ -170,7 +163,7 @@ abstract contract ERC20 {
         emit Approval(owner, spender, value);
     }
 
-    function DOMAIN_SEPARATOR() public view virtual returns (bytes32) {
+    function DOMAIN_SEPARATOR() public view virtual override returns (bytes32) {
         return
             _chainId() == INITIAL_CHAIN_ID
                 ? INITIAL_DOMAIN_SEPARATOR

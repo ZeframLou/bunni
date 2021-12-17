@@ -10,6 +10,7 @@ import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Po
 import {IUniswapV3Factory} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
 import {Bunni} from "../Bunni.sol";
+import {IBunni} from "../interfaces/IBunni.sol";
 import {ERC20Mock} from "./mocks/ERC20Mock.sol";
 import {WETH9Mock} from "./mocks/WETH9Mock.sol";
 import {UniswapV3FactoryDeployer} from "./lib/UniswapV3FactoryDeployer.sol";
@@ -85,7 +86,7 @@ contract BunniTest is DSTest, UniswapV3FactoryDeployer {
         (uint256 shares, , , ) = _makeDeposit(depositAmount0, depositAmount1);
 
         // withdraw
-        Bunni.WithdrawParams memory withdrawParams = Bunni.WithdrawParams({
+        IBunni.WithdrawParams memory withdrawParams = IBunni.WithdrawParams({
             recipient: address(this),
             shares: shares,
             amount0Min: 0,
@@ -130,7 +131,7 @@ contract BunniTest is DSTest, UniswapV3FactoryDeployer {
 
         // deposit tokens
         // max slippage is 1%
-        Bunni.DepositParams memory depositParams = Bunni.DepositParams({
+        IBunni.DepositParams memory depositParams = IBunni.DepositParams({
             amount0Desired: depositAmount0,
             amount1Desired: depositAmount1,
             amount0Min: (depositAmount0 * 99) / 100,
