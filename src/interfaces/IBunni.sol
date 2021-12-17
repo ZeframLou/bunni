@@ -15,6 +15,45 @@ import {ILiquidityManagement} from "./ILiquidityManagement.sol";
 /// Supports one-sided liquidity adding and compounding fees earned back into the
 /// liquidity position.
 interface IBunni is ILiquidityManagement, IERC20, IMulticall {
+    /// @notice Emitted when liquidity is increased via deposit
+    /// @param sender The msg.sender address
+    /// @param liquidity The amount by which liquidity was increased
+    /// @param amount0 The amount of token0 that was paid for the increase in liquidity
+    /// @param amount1 The amount of token1 that was paid for the increase in liquidity
+    /// @param shares The amount of share tokens minted to the sender
+    event Deposit(
+        address indexed sender,
+        uint128 liquidity,
+        uint256 amount0,
+        uint256 amount1,
+        uint256 shares
+    );
+    /// @notice Emitted when liquidity is decreased via withdrawal
+    /// @param sender The msg.sender address
+    /// @param liquidity The amount by which liquidity was decreased
+    /// @param recipient The address of the account that received the collected tokens
+    /// @param amount0 The amount of token0 that was accounted for the decrease in liquidity
+    /// @param amount1 The amount of token1 that was accounted for the decrease in liquidity
+    /// @param shares The amount of share tokens burnt from the sender
+    event Withdraw(
+        address indexed sender,
+        address recipient,
+        uint128 liquidity,
+        uint256 amount0,
+        uint256 amount1,
+        uint256 shares
+    );
+    /// @notice Emitted when fees are compounded back into liquidity
+    /// @param sender The msg.sender address
+    /// @param liquidity The amount by which liquidity was increased
+    /// @param amount0 The amount of token0 added to the liquidity position
+    /// @param amount1 The amount of token1 added to the liquidity position
+    event Compound(
+        address indexed sender,
+        uint128 liquidity,
+        uint256 amount0,
+        uint256 amount1
+    );
     struct DepositParams {
         uint256 amount0Desired;
         uint256 amount1Desired;
@@ -77,6 +116,20 @@ interface IBunni is ILiquidityManagement, IERC20, IMulticall {
         external
         returns (
             uint128 addedLiquidity,
+            uint256 amount0,
+            uint256 amount1
+        );
+
+    /// @notice Computes the amount of liquidity and token amounts each full share token
+    /// can be redeemed for when calling withdraw().
+    /// @return liquidity_ The liquidity amount that each full share is worth
+    /// @return amount0 The amount of token0 that each full share can be redeemed for
+    /// @return amount1 The amount of token1 that each full share can be redeemed for
+    function pricePerFullShare()
+        external
+        view
+        returns (
+            uint128 liquidity_,
             uint256 amount0,
             uint256 amount1
         );

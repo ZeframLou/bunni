@@ -31,6 +31,9 @@ contract Bunni is
     PeripheryValidation,
     SelfPermit
 {
+    uint8 public constant SHARE_DECIMALS = 18;
+    uint256 public constant SHARE_PRECISION = 10**SHARE_DECIMALS;
+
     /// @notice the key of this LP position in the Uniswap pool
     bytes32 public immutable positionKey;
 
@@ -51,7 +54,7 @@ contract Bunni is
         int24 _tickUpper,
         address _WETH9
     )
-        ERC20(_name, _symbol, 18)
+        ERC20(_name, _symbol, SHARE_DECIMALS)
         LiquidityManagement(_pool, _tickLower, _tickUpper, _WETH9)
     {
         positionKey = PositionKey.compute(
@@ -69,6 +72,7 @@ contract Bunni is
     function deposit(DepositParams calldata params)
         external
         payable
+        virtual
         override
         checkDeadline(params.deadline)
         returns (
@@ -84,13 +88,16 @@ contract Bunni is
             existingLiquidity
         );
         shares = _mintShares(addedLiquidity, existingLiquidity);
+
+        emit Deposit(msg.sender, addedLiquidity, amount0, amount1, shares);
     }
 
-    function depositOneside() external {}
+    function depositOneside() external virtual {}
 
     /// @inheritdoc IBunni
     function withdraw(WithdrawParams calldata params)
         external
+        virtual
         override
         checkDeadline(params.deadline)
         returns (
@@ -102,11 +109,12 @@ contract Bunni is
         return _withdraw(params);
     }
 
-    function withdrawOneside() external {}
+    function withdrawOneside() external virtual {}
 
     /// @inheritdoc IBunni
     function compound()
         external
+        virtual
         override
         returns (
             uint128 addedLiquidity,
@@ -117,6 +125,48 @@ contract Bunni is
         return _compound();
     }
 
+    /// @inheritdoc IBunni
+    function pricePerFullShare()
+        external
+        view
+        virtual
+        override
+        returns (
+            uint128 liquidity_,
+            uint256 amount0,
+            uint256 amount1
+        )
+    {
+        uint256 existingShareSupply = totalSupply;
+        uint256 existingLiquidity = liquidity;
+
+        // compute liquidity per share
+        if (existingShareSupply == 0) {
+            // no existing shares, bootstrap at rate 1:1
+            liquidity_ = uint128(FixedPoint128.Q128);
+        } else {
+            // liquidity_ = existingLiquidity / existingShareSupply;
+            liquidity_ = uint128(
+                FullMath.mulDiv(
+                    existingLiquidity,
+                    SHARE_PRECISION,
+                    existingShareSupply
+                )
+            );
+        }
+
+        // compute token amounts
+        (uint160 sqrtRatioX96, , , , , , ) = pool.slot0();
+        uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(tickLower);
+        uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(tickUpper);
+        (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
+            sqrtRatioX96,
+            sqrtRatioAX96,
+            sqrtRatioBX96,
+            liquidity_
+        );
+    }
+
     /// -----------------------------------------------------------
     /// Internal functions
     /// -----------------------------------------------------------
@@ -124,6 +174,7 @@ contract Bunni is
     /// @dev See {Bunni::deposit}
     function _deposit(DepositParams calldata params, uint128 existingLiquidity)
         internal
+        virtual
         returns (
             uint128 addedLiquidity,
             uint256 amount0,
@@ -168,21 +219,23 @@ contract Bunni is
         feeGrowthInside0LastX128 = updatedFeeGrowthInside0LastX128;
         feeGrowthInside1LastX128 = updatedFeeGrowthInside1LastX128;
         liquidity = existingLiquidity + addedLiquidity;
-
-        // TODO: emit event
     }
 
-    function _depositOneside() internal {}
+    function _depositOneside() internal virtual {}
 
     /// @dev See {Bunni::withdraw}
     function _withdraw(WithdrawParams calldata params)
         internal
+        virtual
         returns (
             uint128 removedLiquidity,
             uint256 amount0,
             uint256 amount1
         )
     {
+        uint256 currentTotalSupply = totalSupply;
+        uint128 existingLiquidity = liquidity;
+
         // allow collecting to address(this) with address 0
         // this is used for withdrawing ETH
         address recipient = params.recipient == address(0)
@@ -191,13 +244,11 @@ contract Bunni is
 
         // burn shares
         require(params.shares > 0, "0");
-        uint256 currentTotalSupply = totalSupply;
         _burn(msg.sender, params.shares);
         // at this point of execution we know param.shares <= currentTotalSupply
         // since otherwise the _burn() call would've reverted
 
         // burn liquidity from pool
-        uint128 existingLiquidity = liquidity;
         // type cast is safe because we know removedLiquidity <= existingLiquidity
         removedLiquidity = uint128(
             FullMath.mulDiv(
@@ -250,14 +301,22 @@ contract Bunni is
         // subtraction is safe because we checked removedLiquidity <= existingLiquidity
         liquidity = existingLiquidity - removedLiquidity;
 
-        // TODO: emit event
+        emit Withdraw(
+            msg.sender,
+            recipient,
+            removedLiquidity,
+            amount0,
+            amount1,
+            params.shares
+        );
     }
 
-    function _withdrawOneside() internal {}
+    function _withdrawOneside() internal virtual {}
 
     /// @dev See {Bunni::compound}
     function _compound()
         internal
+        virtual
         returns (
             uint128 addedLiquidity,
             uint256 amount0,
@@ -409,7 +468,7 @@ contract Bunni is
 
         liquidity = existingLiquidity + addedLiquidity;
 
-        // TODO: emit event
+        emit Compound(msg.sender, addedLiquidity, amount0, amount1);
     }
 
     /// @notice Mints share tokens (this) to the sender based on the amount of liquidity added.
@@ -418,6 +477,7 @@ contract Bunni is
     /// @return shares The amount of share tokens minted to the sender.
     function _mintShares(uint128 addedLiquidity, uint128 existingLiquidity)
         internal
+        virtual
         returns (uint256 shares)
     {
         uint256 existingShareSupply = totalSupply;
@@ -435,7 +495,5 @@ contract Bunni is
 
         // mint shares to sender
         _mint(msg.sender, shares);
-
-        // TODO: emit event
     }
 }
