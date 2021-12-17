@@ -21,8 +21,7 @@ import {LiquidityManagement} from "./uniswap/LiquidityManagement.sol";
 /// @title Bunni
 /// @author zefram.eth
 /// @notice A fractionalized Uniswap v3 LP position represented by an ERC20 token.
-/// Supports one-sided liquidity adding and compounding fees earned back into the
-/// liquidity position.
+/// Supports compounding trading fees earned back into the liquidity position.
 contract Bunni is
     IBunni,
     ERC20,
@@ -92,8 +91,6 @@ contract Bunni is
         emit Deposit(msg.sender, addedLiquidity, amount0, amount1, shares);
     }
 
-    function depositOneside() external virtual {}
-
     /// @inheritdoc IBunni
     function withdraw(WithdrawParams calldata params)
         external
@@ -108,8 +105,6 @@ contract Bunni is
     {
         return _withdraw(params);
     }
-
-    function withdrawOneside() external virtual {}
 
     /// @inheritdoc IBunni
     function compound()
@@ -221,8 +216,6 @@ contract Bunni is
         liquidity = existingLiquidity + addedLiquidity;
     }
 
-    function _depositOneside() internal virtual {}
-
     /// @dev See {Bunni::withdraw}
     function _withdraw(WithdrawParams calldata params)
         internal
@@ -310,8 +303,6 @@ contract Bunni is
             params.shares
         );
     }
-
-    function _withdrawOneside() internal virtual {}
 
     /// @dev See {Bunni::compound}
     function _compound()
