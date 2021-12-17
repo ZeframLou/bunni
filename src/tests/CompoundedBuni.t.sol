@@ -3,16 +3,16 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
-import {IUniswapV3Factory} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
-import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-
 import {DSTest} from "ds-test/test.sol";
 
+import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import {IUniswapV3Factory} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+
 import {CompoundedBuni} from "../CompoundedBuni.sol";
-import {UniswapV3FactoryDeployer} from "./lib/UniswapV3FactoryDeployer.sol";
 import {ERC20Mock} from "./mocks/ERC20Mock.sol";
 import {WETH9Mock} from "./mocks/WETH9Mock.sol";
+import {UniswapV3FactoryDeployer} from "./lib/UniswapV3FactoryDeployer.sol";
 
 contract CompoundedBuniTest is DSTest, UniswapV3FactoryDeployer {
     uint256 constant PRECISION = 10**18;
@@ -23,7 +23,7 @@ contract CompoundedBuniTest is DSTest, UniswapV3FactoryDeployer {
     ERC20Mock token0;
     ERC20Mock token1;
     WETH9Mock weth;
-    CompoundedBuni buni;
+    CompoundedBuni bunni;
     uint24 fee;
 
     function setUp() public {
@@ -41,20 +41,19 @@ contract CompoundedBuniTest is DSTest, UniswapV3FactoryDeployer {
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
         weth = new WETH9Mock();
 
-        // initialize buni
-        buni = new CompoundedBuni();
-        buni.initialize(
-            "CompoundedBuni",
-            "CBuni",
+        // initialize bunni
+        bunni = new CompoundedBuni(
+            "CompoundedBuni LP",
+            "BUNNI-LP",
             pool,
             -100,
             100,
             address(weth)
         );
 
-        // approve tokens to buni
-        token0.approve(address(buni), type(uint256).max);
-        token1.approve(address(buni), type(uint256).max);
+        // approve tokens to bunni
+        token0.approve(address(bunni), type(uint256).max);
+        token1.approve(address(bunni), type(uint256).max);
     }
 
     function test_deposit() public {
@@ -76,6 +75,7 @@ contract CompoundedBuniTest is DSTest, UniswapV3FactoryDeployer {
         // check token balances
         assertEqDecimal(token0.balanceOf(address(this)), 0, DECIMALS);
         assertEqDecimal(token1.balanceOf(address(this)), 0, DECIMALS);
+        assertEqDecimal(bunni.balanceOf(address(this)), shares, DECIMALS);
     }
 
     function test_withdraw() public {
@@ -87,12 +87,13 @@ contract CompoundedBuniTest is DSTest, UniswapV3FactoryDeployer {
         // withdraw
         CompoundedBuni.WithdrawParams memory withdrawParams = CompoundedBuni
             .WithdrawParams({
+                recipient: address(this),
                 shares: shares,
                 amount0Min: 0,
                 amount1Min: 0,
                 deadline: block.timestamp
             });
-        (, uint256 withdrawAmount0, uint256 withdrawAmount1) = buni.withdraw(
+        (, uint256 withdrawAmount0, uint256 withdrawAmount1) = bunni.withdraw(
             withdrawParams
         );
 
@@ -112,6 +113,7 @@ contract CompoundedBuniTest is DSTest, UniswapV3FactoryDeployer {
             depositAmount1 - 1,
             DECIMALS
         );
+        assertEqDecimal(bunni.balanceOf(address(this)), 0, DECIMALS);
     }
 
     function _makeDeposit(uint256 depositAmount0, uint256 depositAmount1)
@@ -128,14 +130,15 @@ contract CompoundedBuniTest is DSTest, UniswapV3FactoryDeployer {
         token1.mint(address(this), depositAmount1);
 
         // deposit tokens
+        // max slippage is 1%
         CompoundedBuni.DepositParams memory depositParams = CompoundedBuni
             .DepositParams({
                 amount0Desired: depositAmount0,
                 amount1Desired: depositAmount1,
-                amount0Min: depositAmount0,
-                amount1Min: depositAmount1,
+                amount0Min: (depositAmount0 * 99) / 100,
+                amount1Min: (depositAmount1 * 99) / 100,
                 deadline: block.timestamp
             });
-        return buni.deposit(depositParams);
+        return bunni.deposit(depositParams);
     }
 }

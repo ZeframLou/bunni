@@ -5,19 +5,16 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
-import {IPeripheryPayments} from "@uniswap/v3-periphery/contracts/interfaces/IPeripheryPayments.sol";
 import {IWETH9} from "@uniswap/v3-periphery/contracts/interfaces/external/IWETH9.sol";
-
 import {TransferHelper} from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
+import {IPeripheryPayments} from "@uniswap/v3-periphery/contracts/interfaces/IPeripheryPayments.sol";
 
-import {PeripheryImmutableState} from "./PeripheryImmutableState.sol";
+abstract contract PeripheryPayments is IPeripheryPayments {
+    /// @notice Wrapped Ether
+    address public immutable WETH9;
 
-abstract contract PeripheryPayments is
-    IPeripheryPayments,
-    PeripheryImmutableState
-{
-    function __PeripheryPayments_init(address _WETH9) internal initializer {
-        __PeripheryImmutableState_init(_WETH9);
+    constructor(address _WETH9) {
+        WETH9 = _WETH9;
     }
 
     receive() external payable {
