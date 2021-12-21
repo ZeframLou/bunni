@@ -116,6 +116,19 @@ contract BunniTest is DSTest, UniswapV3FactoryDeployer {
         assertEqDecimal(bunni.balanceOf(address(this)), 0, DECIMALS);
     }
 
+    function test_compound() public {
+        // make deposit
+        uint256 depositAmount0 = PRECISION;
+        uint256 depositAmount1 = PRECISION;
+        (uint256 shares, , , ) = _makeDeposit(depositAmount0, depositAmount1);
+
+        // do a few trades to generate fees
+
+        // compound
+
+        // check added liquidity
+    }
+
     function _makeDeposit(uint256 depositAmount0, uint256 depositAmount1)
         internal
         returns (
