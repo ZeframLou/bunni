@@ -8,7 +8,7 @@ import {IUniswapV3MintCallback} from "@uniswap/v3-core/contracts/interfaces/call
 
 import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
-import {PeripheryPayments} from "./PeripheryPayments.sol";
+import {PeripheryPayments, PeripheryImmutableState} from "@uniswap/v3-periphery/contracts/base/PeripheryPayments.sol";
 import {ILiquidityManagement} from "../interfaces/ILiquidityManagement.sol";
 
 /// @title Liquidity management functions
@@ -32,8 +32,9 @@ abstract contract LiquidityManagement is
         IUniswapV3Pool _pool,
         int24 _tickLower,
         int24 _tickUpper,
+        address _factory,
         address _WETH9
-    ) PeripheryPayments(_WETH9) {
+    ) PeripheryImmutableState(_factory, _WETH9) {
         pool = _pool;
         token0 = _pool.token0();
         token1 = _pool.token1();

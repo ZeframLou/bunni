@@ -54,6 +54,7 @@ interface IBunni is ILiquidityManagement, IERC20, IMulticall {
         uint256 amount0,
         uint256 amount1
     );
+
     struct DepositParams {
         uint256 amount0Desired;
         uint256 amount1Desired;

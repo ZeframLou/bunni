@@ -13,6 +13,8 @@ import {Bunni} from "../Bunni.sol";
 import {IBunni} from "../interfaces/IBunni.sol";
 import {ERC20Mock} from "./mocks/ERC20Mock.sol";
 import {WETH9Mock} from "./mocks/WETH9Mock.sol";
+import {BunniFactory} from "../BunniFactory.sol";
+import {IBunniFactory} from "../interfaces/IBunniFactory.sol";
 import {UniswapV3FactoryDeployer} from "./lib/UniswapV3FactoryDeployer.sol";
 
 contract BunniTest is DSTest, UniswapV3FactoryDeployer {
@@ -24,7 +26,8 @@ contract BunniTest is DSTest, UniswapV3FactoryDeployer {
     ERC20Mock token0;
     ERC20Mock token1;
     WETH9Mock weth;
-    Bunni bunni;
+    IBunniFactory bunniFactory;
+    IBunni bunni;
     uint24 fee;
 
     function setUp() public {
@@ -42,14 +45,16 @@ contract BunniTest is DSTest, UniswapV3FactoryDeployer {
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
         weth = new WETH9Mock();
 
+        // initialize bunni factory
+        bunniFactory = new BunniFactory(address(weth));
+
         // initialize bunni
-        bunni = new Bunni(
+        bunni = bunniFactory.createBunni(
             "Bunni LP",
             "BUNNI-LP",
             pool,
             -100,
-            100,
-            address(weth)
+            100
         );
 
         // approve tokens to bunni

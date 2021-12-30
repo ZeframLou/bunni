@@ -42,10 +42,11 @@ contract Bunni is
         IUniswapV3Pool _pool,
         int24 _tickLower,
         int24 _tickUpper,
+        address _factory,
         address _WETH9
     )
         ERC20(_name, _symbol, SHARE_DECIMALS)
-        LiquidityManagement(_pool, _tickLower, _tickUpper, _WETH9)
+        LiquidityManagement(_pool, _tickLower, _tickUpper, _factory, _WETH9)
     {
         positionKey = PositionKey.compute(
             address(this),
