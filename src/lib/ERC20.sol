@@ -32,21 +32,6 @@ abstract contract ERC20 is IERC20 {
     mapping(address => mapping(address => uint256)) public override allowance;
 
     /*///////////////////////////////////////////////////////////////
-                           EIP-2612 STORAGE
-    //////////////////////////////////////////////////////////////*/
-
-    bytes32 public constant PERMIT_TYPEHASH =
-        keccak256(
-            "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
-        );
-
-    uint256 internal immutable INITIAL_CHAIN_ID;
-
-    bytes32 internal immutable INITIAL_DOMAIN_SEPARATOR;
-
-    mapping(address => uint256) public override nonces;
-
-    /*///////////////////////////////////////////////////////////////
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
@@ -58,9 +43,6 @@ abstract contract ERC20 is IERC20 {
         name = _name;
         symbol = _symbol;
         decimals = _decimals;
-
-        INITIAL_CHAIN_ID = _chainId();
-        INITIAL_DOMAIN_SEPARATOR = computeDomainSeparator();
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -116,79 +98,6 @@ abstract contract ERC20 is IERC20 {
         emit Transfer(from, to, amount);
 
         return true;
-    }
-
-    /*///////////////////////////////////////////////////////////////
-                              EIP-2612 LOGIC
-    //////////////////////////////////////////////////////////////*/
-
-    function permit(
-        address owner,
-        address spender,
-        uint256 value,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) public virtual override {
-        require(deadline >= block.timestamp, "PERMIT_DEADLINE_EXPIRED");
-
-        // Unchecked because the only math done is incrementing
-        // the owner's nonce which cannot realistically overflow.
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                "\x19\x01",
-                DOMAIN_SEPARATOR(),
-                keccak256(
-                    abi.encode(
-                        PERMIT_TYPEHASH,
-                        owner,
-                        spender,
-                        value,
-                        nonces[owner]++,
-                        deadline
-                    )
-                )
-            )
-        );
-
-        address recoveredAddress = ecrecover(digest, v, r, s);
-        require(
-            recoveredAddress != address(0) && recoveredAddress == owner,
-            "INVALID_PERMIT_SIGNATURE"
-        );
-
-        allowance[recoveredAddress][spender] = value;
-
-        emit Approval(owner, spender, value);
-    }
-
-    function DOMAIN_SEPARATOR() public view virtual override returns (bytes32) {
-        return
-            _chainId() == INITIAL_CHAIN_ID
-                ? INITIAL_DOMAIN_SEPARATOR
-                : computeDomainSeparator();
-    }
-
-    function computeDomainSeparator() internal view virtual returns (bytes32) {
-        return
-            keccak256(
-                abi.encode(
-                    keccak256(
-                        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-                    ),
-                    keccak256(bytes(name)),
-                    keccak256(bytes("1")),
-                    _chainId(),
-                    address(this)
-                )
-            );
-    }
-
-    function _chainId() internal pure returns (uint256 chainId) {
-        assembly {
-            chainId := chainid()
-        }
     }
 
     /*///////////////////////////////////////////////////////////////
