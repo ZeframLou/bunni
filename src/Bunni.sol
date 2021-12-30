@@ -10,7 +10,6 @@ import {TransferHelper} from "@uniswap/v3-core/contracts/libraries/TransferHelpe
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 import {Multicall} from "@uniswap/v3-periphery/contracts/base/Multicall.sol";
-import {SelfPermit} from "@uniswap/v3-periphery/contracts/base/SelfPermit.sol";
 import {PositionKey} from "@uniswap/v3-periphery/contracts/libraries/PositionKey.sol";
 import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
@@ -23,7 +22,7 @@ import {LiquidityManagement} from "./uniswap/LiquidityManagement.sol";
 /// @author zefram.eth
 /// @notice A fractionalized Uniswap v3 LP position represented by an ERC20 token.
 /// Supports compounding trading fees earned back into the liquidity position.
-contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall, SelfPermit {
+contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
     uint8 public constant SHARE_DECIMALS = 18;
     uint256 public constant SHARE_PRECISION = 10**SHARE_DECIMALS;
     uint256 public constant WAD = 10**18;
