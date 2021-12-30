@@ -320,39 +320,36 @@ contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
         virtual
         override
         returns (
-            uint128 liquidity_,
+            uint128 liquidity,
             uint256 amount0,
             uint256 amount1
         )
     {
         uint256 existingShareSupply = totalSupply;
-        (uint128 existingLiquidity, , , , ) = pool.positions(positionKey);
-
-        // compute liquidity per share
         if (existingShareSupply == 0) {
-            // no existing shares, bootstrap at rate 1:1
-            liquidity_ = uint128(FixedPoint128.Q128);
-        } else {
-            // liquidity_ = existingLiquidity / existingShareSupply;
-            liquidity_ = uint128(
-                FullMath.mulDiv(
-                    existingLiquidity,
-                    SHARE_PRECISION,
-                    existingShareSupply
-                )
-            );
+            return (0, 0, 0);
         }
 
-        // compute token amounts
-        (uint160 sqrtRatioX96, , , , , , ) = pool.slot0();
-        uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(tickLower);
-        uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(tickUpper);
-        (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
-            sqrtRatioX96,
-            sqrtRatioAX96,
-            sqrtRatioBX96,
-            liquidity_
+        (liquidity, , , , ) = pool.positions(positionKey);
+        liquidity = uint128(
+            FullMath.mulDiv(liquidity, SHARE_PRECISION, existingShareSupply)
         );
+        (amount0, amount1, ) = _getReserves(liquidity);
+    }
+
+    /// @inheritdoc IBunni
+    function getReserves()
+        public
+        view
+        override
+        returns (
+            uint112 reserve0,
+            uint112 reserve1,
+            uint32 blockTimestampLast
+        )
+    {
+        (uint128 existingLiquidity, , , , ) = pool.positions(positionKey);
+        return _getReserves(existingLiquidity);
     }
 
     /// -----------------------------------------------------------
@@ -383,5 +380,38 @@ contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
 
         // mint shares to sender
         _mint(msg.sender, shares);
+    }
+
+    /// @notice Cast a uint256 to a uint112, revert on overflow
+    /// @param y The uint256 to be downcasted
+    /// @return z The downcasted integer, now type uint112
+    function _toUint112(uint256 y) internal pure returns (uint112 z) {
+        require((z = uint112(y)) == y);
+    }
+
+    /// @dev See getReserves
+    function _getReserves(uint128 existingLiquidity)
+        internal
+        view
+        returns (
+            uint112 reserve0,
+            uint112 reserve1,
+            uint32 blockTimestampLast
+        )
+    {
+        (uint160 sqrtRatioX96, , , , , , ) = pool.slot0();
+        uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(tickLower);
+        uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(tickUpper);
+        (uint256 amount0, uint256 amount1) = LiquidityAmounts
+            .getAmountsForLiquidity(
+                sqrtRatioX96,
+                sqrtRatioAX96,
+                sqrtRatioBX96,
+                existingLiquidity
+            );
+
+        reserve0 = _toUint112(amount0);
+        reserve1 = _toUint112(amount1);
+        blockTimestampLast = uint32(block.timestamp);
     }
 }

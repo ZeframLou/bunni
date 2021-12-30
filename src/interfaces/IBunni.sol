@@ -139,6 +139,20 @@ interface IBunni is ILiquidityManagement, IERC20, IMulticall {
             uint256 amount1
         );
 
+    /// @notice Returns the token reserve in the liquidity position.
+    /// @dev Added for OlympusDAO bonding compatibility (only full range positions)
+    /// @return reserve0 The amount of token0 in the liquidity position
+    /// @return reserve1 The amount of token1 in the liquidity position
+    /// @return blockTimestampLast Equals block.timestamp
+    function getReserves()
+        external
+        view
+        returns (
+            uint112 reserve0,
+            uint112 reserve1,
+            uint32 blockTimestampLast
+        );
+
     /// @notice the key of this LP position in the Uniswap pool
     function positionKey() external view returns (bytes32);
 }
