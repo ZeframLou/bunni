@@ -42,23 +42,17 @@ abstract contract LiquidityManagement is
         tickUpper = _tickUpper;
     }
 
-    struct MintCallbackData {
-        address payer;
-    }
-
     /// @inheritdoc IUniswapV3MintCallback
     function uniswapV3MintCallback(
         uint256 amount0Owed,
         uint256 amount1Owed,
         bytes calldata data
     ) external override {
-        MintCallbackData memory decoded = abi.decode(data, (MintCallbackData));
+        address payer = abi.decode(data, (address));
         require(msg.sender == address(pool), "WHO");
 
-        if (amount0Owed > 0)
-            pay(token0, decoded.payer, msg.sender, amount0Owed);
-        if (amount1Owed > 0)
-            pay(token1, decoded.payer, msg.sender, amount1Owed);
+        if (amount0Owed > 0) pay(token0, payer, msg.sender, amount0Owed);
+        if (amount1Owed > 0) pay(token1, payer, msg.sender, amount1Owed);
     }
 
     struct AddLiquidityParams {
@@ -98,12 +92,12 @@ abstract contract LiquidityManagement is
             tickLower,
             tickUpper,
             liquidity,
-            abi.encode(MintCallbackData({payer: msg.sender}))
+            abi.encode(msg.sender)
         );
 
         require(
             amount0 >= params.amount0Min && amount1 >= params.amount1Min,
-            "Price slippage check"
+            "SLIP"
         );
     }
 }

@@ -20,6 +20,7 @@ import {UniswapV3FactoryDeployer} from "./lib/UniswapV3FactoryDeployer.sol";
 contract BunniTest is DSTest, UniswapV3FactoryDeployer {
     uint256 constant PRECISION = 10**18;
     uint8 constant DECIMALS = 18;
+    uint256 constant PROTOCOL_FEE = 5e17;
 
     IUniswapV3Factory factory;
     IUniswapV3Pool pool;
@@ -46,7 +47,7 @@ contract BunniTest is DSTest, UniswapV3FactoryDeployer {
         weth = new WETH9Mock();
 
         // initialize bunni factory
-        bunniFactory = new BunniFactory(address(weth));
+        bunniFactory = new BunniFactory(address(weth), PROTOCOL_FEE);
 
         // initialize bunni
         bunni = bunniFactory.createBunni(
@@ -60,6 +61,10 @@ contract BunniTest is DSTest, UniswapV3FactoryDeployer {
         // approve tokens to bunni
         token0.approve(address(bunni), type(uint256).max);
         token1.approve(address(bunni), type(uint256).max);
+    }
+
+    function test_createBunni() public {
+        bunniFactory.createBunni("Bunni LP", "BUNNI-LP", pool, -10, 10);
     }
 
     function test_deposit() public {

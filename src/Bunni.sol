@@ -6,35 +6,35 @@ pragma abicoder v2;
 import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import {FullMath} from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import {FixedPoint128} from "@uniswap/v3-core/contracts/libraries/FixedPoint128.sol";
+import {TransferHelper} from "@uniswap/v3-core/contracts/libraries/TransferHelper.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 import {Multicall} from "@uniswap/v3-periphery/contracts/base/Multicall.sol";
 import {SelfPermit} from "@uniswap/v3-periphery/contracts/base/SelfPermit.sol";
 import {PositionKey} from "@uniswap/v3-periphery/contracts/libraries/PositionKey.sol";
 import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
-import {PeripheryValidation} from "@uniswap/v3-periphery/contracts/base/PeripheryValidation.sol";
 
 import {ERC20} from "./lib/ERC20.sol";
 import {IBunni} from "./interfaces/IBunni.sol";
+import {IBunniFactory} from "./interfaces/IBunniFactory.sol";
 import {LiquidityManagement} from "./uniswap/LiquidityManagement.sol";
 
 /// @title Bunni
 /// @author zefram.eth
 /// @notice A fractionalized Uniswap v3 LP position represented by an ERC20 token.
 /// Supports compounding trading fees earned back into the liquidity position.
-contract Bunni is
-    IBunni,
-    ERC20,
-    LiquidityManagement,
-    Multicall,
-    PeripheryValidation,
-    SelfPermit
-{
+contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall, SelfPermit {
     uint8 public constant SHARE_DECIMALS = 18;
     uint256 public constant SHARE_PRECISION = 10**SHARE_DECIMALS;
+    uint256 public constant WAD = 10**18;
 
-    /// @notice the key of this LP position in the Uniswap pool
-    bytes32 public immutable positionKey;
+    /// @inheritdoc IBunni
+    bytes32 public immutable override positionKey;
+
+    modifier checkDeadline(uint256 deadline) {
+        require(block.timestamp <= deadline, "OLD");
+        _;
+    }
 
     constructor(
         string memory _name,
@@ -137,7 +137,7 @@ contract Bunni is
         );
         require(
             amount0 >= params.amount0Min && amount1 >= params.amount1Min,
-            "SLIPPAGE"
+            "SLIP"
         );
 
         emit Withdraw(
@@ -161,6 +161,8 @@ contract Bunni is
             uint256 amount1
         )
     {
+        uint256 protocolFee = IBunniFactory(factory).protocolFee();
+
         // trigger an update of the position fees owed snapshots if it has any liquidity
         pool.burn(tickLower, tickUpper, 0);
         (, , , uint128 cachedFeesOwed0, uint128 cachedFeesOwed1) = pool
@@ -266,16 +268,44 @@ contract Bunni is
         /// amount0, amount1 now store the fees claimed
         /// -----------------------------------------------------------
 
-        // add fees to Uniswap pool
-        (addedLiquidity, amount0, amount1) = _addLiquidity(
-            LiquidityManagement.AddLiquidityParams({
-                recipient: address(this),
-                amount0Desired: amount0,
-                amount1Desired: amount1,
-                amount0Min: 0,
-                amount1Min: 0
-            })
-        );
+        if (protocolFee > 0) {
+            // take fee from amount0 and amount1 and transfer to factory
+            uint256 fee0 = FullMath.mulDiv(amount0, protocolFee, WAD);
+            uint256 fee1 = FullMath.mulDiv(amount1, protocolFee, WAD);
+
+            // add fees (minus protocol fees) to Uniswap pool
+            (addedLiquidity, amount0, amount1) = _addLiquidity(
+                LiquidityManagement.AddLiquidityParams({
+                    recipient: address(this),
+                    amount0Desired: amount0 - fee0,
+                    amount1Desired: amount1 - fee1,
+                    amount0Min: 0,
+                    amount1Min: 0
+                })
+            );
+
+            // send protocol fees
+            if (fee0 > 0) {
+                TransferHelper.safeTransfer(token0, factory, fee0);
+            }
+            if (fee1 > 0) {
+                TransferHelper.safeTransfer(token1, factory, fee1);
+            }
+
+            // emit event
+            emit PayProtocolFee(fee0, fee1);
+        } else {
+            // add fees to Uniswap pool
+            (addedLiquidity, amount0, amount1) = _addLiquidity(
+                LiquidityManagement.AddLiquidityParams({
+                    recipient: address(this),
+                    amount0Desired: amount0,
+                    amount1Desired: amount1,
+                    amount0Min: 0,
+                    amount1Min: 0
+                })
+            );
+        }
 
         /// -----------------------------------------------------------
         /// amount0, amount1 now store the tokens added as liquidity

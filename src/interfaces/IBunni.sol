@@ -54,6 +54,10 @@ interface IBunni is ILiquidityManagement, IERC20, IMulticall {
         uint256 amount0,
         uint256 amount1
     );
+    /// @notice Emitted when protocol fees are paid to the factory
+    /// @param amount0 The amount of token0 protocol fees that is withdrawn
+    /// @param amount1 The amount of token1 protocol fees that is withdrawn
+    event PayProtocolFee(uint256 amount0, uint256 amount1);
 
     struct DepositParams {
         uint256 amount0Desired;
@@ -134,4 +138,7 @@ interface IBunni is ILiquidityManagement, IERC20, IMulticall {
             uint256 amount0,
             uint256 amount1
         );
+
+    /// @notice the key of this LP position in the Uniswap pool
+    function positionKey() external view returns (bytes32);
 }
