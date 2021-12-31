@@ -72,6 +72,10 @@ abstract contract LiquidityManagement is
             uint256 amount1
         )
     {
+        if (params.amount0Desired == 0 && params.amount1Desired == 0) {
+            return (0, 0, 0);
+        }
+
         // compute the liquidity amount
         {
             (uint160 sqrtPriceX96, , , , , , ) = pool.slot0();

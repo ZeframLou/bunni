@@ -5,11 +5,14 @@ pragma abicoder v2;
 
 import {DSTest} from "ds-test/test.sol";
 
+import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+
 import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {IUniswapV3Factory} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
 import {Bunni} from "../Bunni.sol";
+import {SwapRouter} from "./lib/SwapRouter.sol";
 import {IBunni} from "../interfaces/IBunni.sol";
 import {ERC20Mock} from "./mocks/ERC20Mock.sol";
 import {WETH9Mock} from "./mocks/WETH9Mock.sol";
@@ -21,9 +24,11 @@ contract BunniTest is DSTest, UniswapV3FactoryDeployer {
     uint256 constant PRECISION = 10**18;
     uint8 constant DECIMALS = 18;
     uint256 constant PROTOCOL_FEE = 5e17;
+    uint256 constant EPSILON = 10**13;
 
     IUniswapV3Factory factory;
     IUniswapV3Pool pool;
+    SwapRouter router;
     ERC20Mock token0;
     ERC20Mock token1;
     WETH9Mock weth;
@@ -45,6 +50,7 @@ contract BunniTest is DSTest, UniswapV3FactoryDeployer {
         );
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
         weth = new WETH9Mock();
+        router = new SwapRouter(address(factory), address(weth));
 
         // initialize bunni factory
         bunniFactory = new BunniFactory(address(weth), PROTOCOL_FEE);
@@ -54,13 +60,15 @@ contract BunniTest is DSTest, UniswapV3FactoryDeployer {
             "Bunni LP",
             "BUNNI-LP",
             pool,
-            -100,
-            100
+            -10000,
+            10000
         );
 
-        // approve tokens to bunni
+        // approve tokens
         token0.approve(address(bunni), type(uint256).max);
+        token0.approve(address(router), type(uint256).max);
         token1.approve(address(bunni), type(uint256).max);
+        token1.approve(address(router), type(uint256).max);
     }
 
     function test_createBunni() public {
@@ -130,13 +138,80 @@ contract BunniTest is DSTest, UniswapV3FactoryDeployer {
         // make deposit
         uint256 depositAmount0 = PRECISION;
         uint256 depositAmount1 = PRECISION;
-        (uint256 shares, , , ) = _makeDeposit(depositAmount0, depositAmount1);
+        _makeDeposit(depositAmount0, depositAmount1);
 
         // do a few trades to generate fees
+        {
+            // swap token0 to token1
+            uint256 amountIn = PRECISION / 100;
+            token0.mint(address(this), amountIn);
+            ISwapRouter.ExactInputSingleParams memory swapParams = ISwapRouter
+                .ExactInputSingleParams({
+                    tokenIn: address(token0),
+                    tokenOut: address(token1),
+                    fee: fee,
+                    recipient: address(this),
+                    deadline: block.timestamp,
+                    amountIn: amountIn,
+                    amountOutMinimum: 0,
+                    sqrtPriceLimitX96: 0
+                });
+            router.exactInputSingle(swapParams);
+        }
+
+        {
+            // swap token1 to token0
+            uint256 amountIn = PRECISION / 50;
+            token1.mint(address(this), amountIn);
+            ISwapRouter.ExactInputSingleParams memory swapParams = ISwapRouter
+                .ExactInputSingleParams({
+                    tokenIn: address(token1),
+                    tokenOut: address(token0),
+                    fee: fee,
+                    recipient: address(this),
+                    deadline: block.timestamp,
+                    amountIn: amountIn,
+                    amountOutMinimum: 0,
+                    sqrtPriceLimitX96: 0
+                });
+            router.exactInputSingle(swapParams);
+        }
 
         // compound
+        (uint256 addedLiquidity, uint256 amount0, uint256 amount1) = bunni
+            .compound();
 
         // check added liquidity
+        assertGtDecimal(addedLiquidity, 0, DECIMALS);
+        assertGtDecimal(amount0, 0, DECIMALS);
+        assertGtDecimal(amount1, 0, DECIMALS);
+
+        // check token balances
+        assertLtDecimal(token0.balanceOf(address(bunni)), EPSILON, DECIMALS);
+        assertLtDecimal(token1.balanceOf(address(bunni)), EPSILON, DECIMALS);
+    }
+
+    function test_pricePerFullShare() public {
+        // make deposit
+        uint256 depositAmount0 = PRECISION;
+        uint256 depositAmount1 = PRECISION;
+        (
+            uint256 shares,
+            uint128 newLiquidity,
+            uint256 newAmount0,
+            uint256 newAmount1
+        ) = _makeDeposit(depositAmount0, depositAmount1);
+
+        (uint128 liquidity, uint256 amount0, uint256 amount1) = bunni
+            .pricePerFullShare();
+
+        assertEqDecimal(
+            liquidity,
+            (newLiquidity * PRECISION) / shares,
+            DECIMALS
+        );
+        assertEqDecimal(amount0, (newAmount0 * PRECISION) / shares, DECIMALS);
+        assertEqDecimal(amount1, (newAmount1 * PRECISION) / shares, DECIMALS);
     }
 
     function _makeDeposit(uint256 depositAmount0, uint256 depositAmount1)
