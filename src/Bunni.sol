@@ -269,8 +269,10 @@ contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
 
         if (protocolFee > 0) {
             // take fee from amount0 and amount1 and transfer to factory
-            uint256 fee0 = FullMath.mulDiv(amount0, protocolFee, WAD);
-            uint256 fee1 = FullMath.mulDiv(amount1, protocolFee, WAD);
+            // amount0 uses 128 bits, protocolFee uses 60 bits
+            // so amount0 * protocolFee can't overflow 256 bits
+            uint256 fee0 = (amount0 * protocolFee) / WAD;
+            uint256 fee1 = (amount1 * protocolFee) / WAD;
 
             // add fees (minus protocol fees) to Uniswap pool
             (addedLiquidity, amount0, amount1) = _addLiquidity(
@@ -331,8 +333,10 @@ contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
         }
 
         (liquidity, , , , ) = pool.positions(positionKey);
+        // liquidity is uint128, SHARE_PRECISION uses 60 bits
+        // so liquidity * SHARE_PRECISION can't overflow 256 bits
         liquidity = uint128(
-            FullMath.mulDiv(liquidity, SHARE_PRECISION, existingShareSupply)
+            (liquidity * SHARE_PRECISION) / existingShareSupply
         );
         (amount0, amount1, ) = _getReserves(liquidity);
     }
