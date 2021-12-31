@@ -28,10 +28,10 @@ Bunni enables projects to create ERC-20 LP tokens on Uniswap V3 and plug them in
 
 It's just like how liquidity mining works using good'ol Uniswap V2!
 
-By using Bunni instead of Uniswap V2, projects can merge their liquidity into one Uniswap V3 pool instead of split it between Uniswap V2 and V3. This means:
+By using Bunni instead of Uniswap V2, projects can merge their liquidity into one Uniswap V3 pool instead of splitting it between Uniswap V2 and V3. This means:
 
 - Traders experience less slippage, since the liquidity is no longer fractured
-- LPs feel more comfortable providing liquidity & using more complex strategies on Uniswap V3, since they know the pool won't become a ghost town.
+- LPs feel more comfortable providing liquidity & using more complex strategies on Uniswap V3, since they know most of the trading volume will go through Uniswap V3.
 
 ## Features
 
