@@ -6,7 +6,6 @@ pragma abicoder v2;
 import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import {FullMath} from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 import {FixedPoint128} from "@uniswap/v3-core/contracts/libraries/FixedPoint128.sol";
-import {TransferHelper} from "@uniswap/v3-core/contracts/libraries/TransferHelper.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 import {Multicall} from "@uniswap/v3-periphery/contracts/base/Multicall.sol";
@@ -15,6 +14,7 @@ import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/Liquid
 
 import {ERC20} from "./lib/ERC20.sol";
 import {IBunni} from "./interfaces/IBunni.sol";
+import {SafeTransferLib} from "./lib/SafeTransferLib.sol";
 import {IBunniFactory} from "./interfaces/IBunniFactory.sol";
 import {LiquidityManagement} from "./uniswap/LiquidityManagement.sol";
 
@@ -287,10 +287,10 @@ contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
 
             // send protocol fees
             if (fee0 > 0) {
-                TransferHelper.safeTransfer(token0, factory, fee0);
+                SafeTransferLib.safeTransfer(ERC20(token0), factory, fee0);
             }
             if (fee1 > 0) {
-                TransferHelper.safeTransfer(token1, factory, fee1);
+                SafeTransferLib.safeTransfer(ERC20(token1), factory, fee1);
             }
 
             // emit event

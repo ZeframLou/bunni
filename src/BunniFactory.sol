@@ -5,12 +5,12 @@ pragma abicoder v2;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-import {TransferHelper} from "@uniswap/v3-core/contracts/libraries/TransferHelper.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 import {Bunni} from "./Bunni.sol";
 import {IBunni} from "./interfaces/IBunni.sol";
 import {IERC20} from "./interfaces/IERC20.sol";
+import {SafeTransferLib} from "./lib/SafeTransferLib.sol";
 import {IBunniFactory} from "./interfaces/IBunniFactory.sol";
 
 /// @title BunniFactory
@@ -68,8 +68,8 @@ contract BunniFactory is IBunniFactory, Ownable {
         onlyOwner
     {
         for (uint256 i = 0; i < tokenList.length; i++) {
-            TransferHelper.safeTransfer(
-                address(tokenList[i]),
+            SafeTransferLib.safeTransfer(
+                tokenList[i],
                 recipient,
                 tokenList[i].balanceOf(address(this))
             );
