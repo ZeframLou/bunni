@@ -82,9 +82,20 @@ contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
                 amount1Min: params.amount1Min
             })
         );
-        shares = _mintShares(addedLiquidity, existingLiquidity);
+        shares = _mintShares(
+            params.recipient,
+            addedLiquidity,
+            existingLiquidity
+        );
 
-        emit Deposit(msg.sender, addedLiquidity, amount0, amount1, shares);
+        emit Deposit(
+            msg.sender,
+            params.recipient,
+            addedLiquidity,
+            amount0,
+            amount1,
+            shares
+        );
     }
 
     /// @inheritdoc IBunni
@@ -360,15 +371,16 @@ contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
     /// Internal functions
     /// -----------------------------------------------------------
 
-    /// @notice Mints share tokens (this) to the sender based on the amount of liquidity added.
+    /// @notice Mints share tokens (this) to the recipient based on the amount of liquidity added.
+    /// @param recipient The recipient of the share tokens
     /// @param addedLiquidity The amount of liquidity added
     /// @param existingLiquidity The amount of existing liquidity before the add
     /// @return shares The amount of share tokens minted to the sender.
-    function _mintShares(uint128 addedLiquidity, uint128 existingLiquidity)
-        internal
-        virtual
-        returns (uint256 shares)
-    {
+    function _mintShares(
+        address recipient,
+        uint128 addedLiquidity,
+        uint128 existingLiquidity
+    ) internal virtual returns (uint256 shares) {
         uint256 existingShareSupply = totalSupply;
         if (existingShareSupply == 0) {
             // no existing shares, bootstrap at rate 1:1
@@ -383,7 +395,7 @@ contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
         }
 
         // mint shares to sender
-        _mint(msg.sender, shares);
+        _mint(recipient, shares);
     }
 
     /// @notice Cast a uint256 to a uint112, revert on overflow

@@ -18,9 +18,9 @@ import {ERC20Mock} from "./mocks/ERC20Mock.sol";
 import {WETH9Mock} from "./mocks/WETH9Mock.sol";
 import {BunniFactory} from "../BunniFactory.sol";
 import {IBunniFactory} from "../interfaces/IBunniFactory.sol";
-import {UniswapV3FactoryDeployer} from "./lib/UniswapV3FactoryDeployer.sol";
+import {UniswapDeployer} from "./lib/UniswapDeployer.sol";
 
-contract BunniTest is DSTest, UniswapV3FactoryDeployer {
+contract BunniTest is DSTest, UniswapDeployer {
     uint256 constant PRECISION = 10**18;
     uint8 constant DECIMALS = 18;
     uint256 constant PROTOCOL_FEE = 5e17;
@@ -234,7 +234,8 @@ contract BunniTest is DSTest, UniswapV3FactoryDeployer {
             amount1Desired: depositAmount1,
             amount0Min: (depositAmount0 * 99) / 100,
             amount1Min: (depositAmount1 * 99) / 100,
-            deadline: block.timestamp
+            deadline: block.timestamp,
+            recipient: address(this)
         });
         return bunni.deposit(depositParams);
     }

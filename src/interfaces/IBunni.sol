@@ -17,12 +17,14 @@ import {ILiquidityManagement} from "./ILiquidityManagement.sol";
 interface IBunni is ILiquidityManagement, IERC20, IMulticall {
     /// @notice Emitted when liquidity is increased via deposit
     /// @param sender The msg.sender address
+    /// @param recipient The address of the account that received the share tokens
     /// @param liquidity The amount by which liquidity was increased
     /// @param amount0 The amount of token0 that was paid for the increase in liquidity
     /// @param amount1 The amount of token1 that was paid for the increase in liquidity
-    /// @param shares The amount of share tokens minted to the sender
+    /// @param shares The amount of share tokens minted to the recipient
     event Deposit(
         address indexed sender,
+        address indexed recipient,
         uint128 liquidity,
         uint256 amount0,
         uint256 amount1,
@@ -37,7 +39,7 @@ interface IBunni is ILiquidityManagement, IERC20, IMulticall {
     /// @param shares The amount of share tokens burnt from the sender
     event Withdraw(
         address indexed sender,
-        address recipient,
+        address indexed recipient,
         uint128 liquidity,
         uint256 amount0,
         uint256 amount1,
@@ -65,6 +67,7 @@ interface IBunni is ILiquidityManagement, IERC20, IMulticall {
         uint256 amount0Min;
         uint256 amount1Min;
         uint256 deadline;
+        address recipient;
     }
 
     /// @notice Increases the amount of liquidity in a position, with tokens paid by the `msg.sender`
