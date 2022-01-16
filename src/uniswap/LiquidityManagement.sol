@@ -17,31 +17,6 @@ abstract contract LiquidityManagement is
     ILiquidityManagement,
     PeripheryPayments
 {
-    /// @notice The Uniswap v3 pool
-    IUniswapV3Pool public immutable override pool;
-    /// @notice The Uniswap pool's token0
-    address public immutable override token0;
-    /// @notice The Uniswap pool's token1
-    address public immutable override token1;
-    /// @notice The lower tick of the liquidity position
-    int24 public immutable override tickLower;
-    /// @notice The upper tick of the liquidity position
-    int24 public immutable override tickUpper;
-
-    constructor(
-        IUniswapV3Pool _pool,
-        int24 _tickLower,
-        int24 _tickUpper,
-        address _factory,
-        address _WETH9
-    ) PeripheryImmutableState(_factory, _WETH9) {
-        pool = _pool;
-        token0 = _pool.token0();
-        token1 = _pool.token1();
-        tickLower = _tickLower;
-        tickUpper = _tickUpper;
-    }
-
     /// @inheritdoc IUniswapV3MintCallback
     function uniswapV3MintCallback(
         uint256 amount0Owed,
