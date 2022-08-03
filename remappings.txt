@@ -1,2 +1,0 @@
-@uniswap/=node_modules/@uniswap/
-@openzeppelin/=node_modules/@openzeppelin/

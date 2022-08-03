@@ -42,11 +42,9 @@ By using Bunni instead of Uniswap V2, projects can merge their liquidity into on
 
 ## Get Started
 
-Install [dapptools](https://github.com/dapphub/dapptools), then
+Install [Foundry](https://github.com/foundry-rs/foundry), then
 
 ```
-make
-make test
+forge install
+forge test
 ```
-
-View the Makefile for more commands.

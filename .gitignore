@@ -2,3 +2,5 @@ node_modules
 out
 .env
 .DS_Store
+.vscode
+cache

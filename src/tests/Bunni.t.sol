@@ -3,7 +3,7 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
-import {DSTest} from "ds-test/test.sol";
+import "forge-std/Test.sol";
 
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 
@@ -20,7 +20,7 @@ import {BunniFactory} from "../BunniFactory.sol";
 import {IBunniFactory} from "../interfaces/IBunniFactory.sol";
 import {UniswapDeployer} from "./lib/UniswapDeployer.sol";
 
-contract BunniTest is DSTest, UniswapDeployer {
+contract BunniTest is Test, UniswapDeployer {
     uint256 constant PRECISION = 10**18;
     uint8 constant DECIMALS = 18;
     uint256 constant PROTOCOL_FEE = 5e17;

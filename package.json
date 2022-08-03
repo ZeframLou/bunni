@@ -2,10 +2,9 @@
   "name": "bunni",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
   "scripts": {
-    "test": "dapp test",
-    "build": "dapp build",
+    "test": "forge test",
+    "build": "forge build",
     "prettier": "npx prettier --write 'src/**/*.sol'",
     "prepare": "husky install"
   },
