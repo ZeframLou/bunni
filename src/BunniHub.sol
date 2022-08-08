@@ -3,62 +3,70 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+
 import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import {FullMath} from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
-import {FixedPoint128} from "@uniswap/v3-core/contracts/libraries/FixedPoint128.sol";
-import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 
 import {Multicall} from "@uniswap/v3-periphery/contracts/base/Multicall.sol";
+import {SelfPermit} from "@uniswap/v3-periphery/contracts/base/SelfPermit.sol";
 import {PositionKey} from "@uniswap/v3-periphery/contracts/libraries/PositionKey.sol";
 import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
-import {ERC20} from "./lib/ERC20.sol";
-import {IBunni} from "./interfaces/IBunni.sol";
+import "./base/Structs.sol";
+import {BunniToken} from "./BunniToken.sol";
+import {IERC20} from "./interfaces/IERC20.sol";
+import {IBunniHub} from "./interfaces/IBunniHub.sol";
+import {IBunniToken} from "./interfaces/IBunniToken.sol";
 import {SafeTransferLib} from "./lib/SafeTransferLib.sol";
-import {IBunniFactory} from "./interfaces/IBunniFactory.sol";
 import {LiquidityManagement} from "./uniswap/LiquidityManagement.sol";
 
-/// @title Bunni
+/// @title BunniHub
 /// @author zefram.eth
-/// @notice A fractionalized Uniswap v3 LP position represented by an ERC20 token.
-/// Supports compounding trading fees earned back into the liquidity position.
-contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
-    uint8 public constant SHARE_DECIMALS = 18;
-    uint256 public constant SHARE_PRECISION = 10**SHARE_DECIMALS;
-    uint256 public constant WAD = 10**18;
+/// @notice The main contract LPs interact with
+contract BunniHub is
+    IBunniHub,
+    Ownable,
+    Multicall,
+    SelfPermit,
+    LiquidityManagement
+{
+    uint256 internal constant WAD = 1e18;
+    uint256 internal constant SHARE_PRECISION = WAD;
+    uint256 internal constant MAX_PROTOCOL_FEE = 5e17;
 
-    /// @inheritdoc IBunni
-    bytes32 public immutable override positionKey;
+    /// -----------------------------------------------------------
+    /// Storage variables
+    /// -----------------------------------------------------------
+
+    uint256 public override protocolFee;
+
+    /// -----------------------------------------------------------
+    /// Modifiers
+    /// -----------------------------------------------------------
 
     modifier checkDeadline(uint256 deadline) {
         require(block.timestamp <= deadline, "OLD");
         _;
     }
 
+    /// -----------------------------------------------------------
+    /// Constructor
+    /// -----------------------------------------------------------
+
     constructor(
-        string memory _name,
-        string memory _symbol,
-        IUniswapV3Pool _pool,
-        int24 _tickLower,
-        int24 _tickUpper,
-        address _factory,
-        address _WETH9
-    )
-        ERC20(_name, _symbol, SHARE_DECIMALS)
-        LiquidityManagement(_pool, _tickLower, _tickUpper, _factory, _WETH9)
-    {
-        positionKey = PositionKey.compute(
-            address(this),
-            _tickLower,
-            _tickUpper
-        );
+        address factory_,
+        address WETH9_,
+        uint256 protocolFee_
+    ) LiquidityManagement(factory_, WETH9_) {
+        protocolFee = protocolFee_;
     }
 
     /// -----------------------------------------------------------
     /// External functions
     /// -----------------------------------------------------------
 
-    /// @inheritdoc IBunni
+    /// @inheritdoc IBunniHub
     function deposit(DepositParams calldata params)
         external
         payable
@@ -72,9 +80,12 @@ contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
             uint256 amount1
         )
     {
-        (uint128 existingLiquidity, , , , ) = pool.positions(positionKey);
+        (uint128 existingLiquidity, , , , ) = params.key.pool.positions(
+            _computePositionKey(params.key)
+        );
         (addedLiquidity, amount0, amount1) = _addLiquidity(
             LiquidityManagement.AddLiquidityParams({
+                key: params.key,
                 recipient: address(this),
                 amount0Desired: params.amount0Desired,
                 amount1Desired: params.amount1Desired,
@@ -83,6 +94,7 @@ contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
             })
         );
         shares = _mintShares(
+            params.key,
             params.recipient,
             addedLiquidity,
             existingLiquidity
@@ -91,6 +103,7 @@ contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
         emit Deposit(
             msg.sender,
             params.recipient,
+            keccak256(abi.encode(params.key)),
             addedLiquidity,
             amount0,
             amount1,
@@ -98,7 +111,7 @@ contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
         );
     }
 
-    /// @inheritdoc IBunni
+    /// @inheritdoc IBunniHub
     function withdraw(WithdrawParams calldata params)
         external
         virtual
@@ -110,8 +123,13 @@ contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
             uint256 amount1
         )
     {
-        uint256 currentTotalSupply = totalSupply;
-        (uint128 existingLiquidity, , , , ) = pool.positions(positionKey);
+        IBunniToken shareToken = getBunni(params.key);
+        require(address(shareToken) != address(0), "WHAT");
+
+        uint256 currentTotalSupply = shareToken.totalSupply();
+        (uint128 existingLiquidity, , , , ) = params.key.pool.positions(
+            _computePositionKey(params.key)
+        );
 
         // allow collecting to address(this) with address 0
         // this is used for withdrawing ETH
@@ -121,9 +139,9 @@ contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
 
         // burn shares
         require(params.shares > 0, "0");
-        _burn(msg.sender, params.shares);
+        shareToken.burn(msg.sender, params.shares);
         // at this point of execution we know param.shares <= currentTotalSupply
-        // since otherwise the _burn() call would've reverted
+        // since otherwise the burn() call would've reverted
 
         // burn liquidity from pool
         // type cast is safe because we know removedLiquidity <= existingLiquidity
@@ -136,12 +154,16 @@ contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
         );
         // burn liquidity
         // tokens are now collectable in the pool
-        (amount0, amount1) = pool.burn(tickLower, tickUpper, removedLiquidity);
+        (amount0, amount1) = params.key.pool.burn(
+            params.key.tickLower,
+            params.key.tickUpper,
+            removedLiquidity
+        );
         // collect tokens and give to msg.sender
-        (amount0, amount1) = pool.collect(
+        (amount0, amount1) = params.key.pool.collect(
             recipient,
-            tickLower,
-            tickUpper,
+            params.key.tickLower,
+            params.key.tickUpper,
             uint128(amount0),
             uint128(amount1)
         );
@@ -153,6 +175,7 @@ contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
         emit Withdraw(
             msg.sender,
             recipient,
+            keccak256(abi.encode(params.key)),
             removedLiquidity,
             amount0,
             amount1,
@@ -160,8 +183,8 @@ contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
         );
     }
 
-    /// @inheritdoc IBunni
-    function compound()
+    /// @inheritdoc IBunniHub
+    function compound(BunniKey calldata key)
         external
         virtual
         override
@@ -171,12 +194,13 @@ contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
             uint256 amount1
         )
     {
-        uint256 protocolFee = IBunniFactory(factory).protocolFee();
+        uint256 protocolFee_ = protocolFee;
 
         // trigger an update of the position fees owed snapshots if it has any liquidity
-        pool.burn(tickLower, tickUpper, 0);
-        (, , , uint128 cachedFeesOwed0, uint128 cachedFeesOwed1) = pool
-            .positions(positionKey);
+        key.pool.burn(key.tickLower, key.tickUpper, 0);
+        (, , , uint128 cachedFeesOwed0, uint128 cachedFeesOwed1) = key
+            .pool
+            .positions(_computePositionKey(key));
 
         /// -----------------------------------------------------------
         /// amount0, amount1 are multi-purposed, see comments below
@@ -193,9 +217,9 @@ contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
         // so that we only claim the amounts we need
 
         {
-            (uint160 sqrtRatioX96, , , , , , ) = pool.slot0();
-            uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(tickLower);
-            uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(tickUpper);
+            (uint160 sqrtRatioX96, , , , , , ) = key.pool.slot0();
+            uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(key.tickLower);
+            uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(key.tickUpper);
 
             if (sqrtRatioX96 <= sqrtRatioAX96) {
                 // token0 used fully, token1 used partially
@@ -266,10 +290,10 @@ contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
 
         // the actual amounts collected are returned
         // tokens are transferred to address(this)
-        (amount0, amount1) = pool.collect(
+        (amount0, amount1) = key.pool.collect(
             address(this),
-            tickLower,
-            tickUpper,
+            key.tickLower,
+            key.tickUpper,
             uint128(amount0),
             uint128(amount1)
         );
@@ -278,16 +302,17 @@ contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
         /// amount0, amount1 now store the fees claimed
         /// -----------------------------------------------------------
 
-        if (protocolFee > 0) {
+        if (protocolFee_ > 0) {
             // take fee from amount0 and amount1 and transfer to factory
             // amount0 uses 128 bits, protocolFee uses 60 bits
             // so amount0 * protocolFee can't overflow 256 bits
-            uint256 fee0 = (amount0 * protocolFee) / WAD;
-            uint256 fee1 = (amount1 * protocolFee) / WAD;
+            uint256 fee0 = (amount0 * protocolFee_) / WAD;
+            uint256 fee1 = (amount1 * protocolFee_) / WAD;
 
             // add fees (minus protocol fees) to Uniswap pool
             (addedLiquidity, amount0, amount1) = _addLiquidity(
                 LiquidityManagement.AddLiquidityParams({
+                    key: key,
                     recipient: address(this),
                     amount0Desired: amount0 - fee0,
                     amount1Desired: amount1 - fee1,
@@ -296,13 +321,8 @@ contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
                 })
             );
 
-            // send protocol fees
-            if (fee0 > 0) {
-                SafeTransferLib.safeTransfer(ERC20(token0), factory, fee0);
-            }
-            if (fee1 > 0) {
-                SafeTransferLib.safeTransfer(ERC20(token1), factory, fee1);
-            }
+            // the protocol fees are now stored in the factory itself
+            // and can be withdrawn by the owner via sweepTokens()
 
             // emit event
             emit PayProtocolFee(fee0, fee1);
@@ -310,6 +330,7 @@ contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
             // add fees to Uniswap pool
             (addedLiquidity, amount0, amount1) = _addLiquidity(
                 LiquidityManagement.AddLiquidityParams({
+                    key: key,
                     recipient: address(this),
                     amount0Desired: amount0,
                     amount1Desired: amount1,
@@ -323,11 +344,38 @@ contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
         /// amount0, amount1 now store the tokens added as liquidity
         /// -----------------------------------------------------------
 
-        emit Compound(msg.sender, addedLiquidity, amount0, amount1);
+        emit Compound(
+            msg.sender,
+            keccak256(abi.encode(key)),
+            addedLiquidity,
+            amount0,
+            amount1
+        );
     }
 
-    /// @inheritdoc IBunni
-    function pricePerFullShare()
+    /// @inheritdoc IBunniHub
+    function deployBunni(BunniKey calldata key)
+        public
+        override
+        returns (IBunniToken token)
+    {
+        token = new BunniToken{salt: bytes32(0)}(key);
+
+        emit NewBunni(
+            token,
+            keccak256(abi.encode(key)),
+            key.pool,
+            key.tickLower,
+            key.tickUpper
+        );
+    }
+
+    /// -----------------------------------------------------------------------
+    /// View functions
+    /// -----------------------------------------------------------------------
+
+    /// @inheritdoc IBunniHub
+    function pricePerFullShare(BunniKey calldata key)
         external
         view
         virtual
@@ -338,50 +386,125 @@ contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
             uint256 amount1
         )
     {
-        uint256 existingShareSupply = totalSupply;
+        IBunniToken shareToken = getBunni(key);
+        uint256 existingShareSupply = shareToken.totalSupply();
         if (existingShareSupply == 0) {
             return (0, 0, 0);
         }
 
-        (liquidity, , , , ) = pool.positions(positionKey);
+        (liquidity, , , , ) = key.pool.positions(_computePositionKey(key));
         // liquidity is uint128, SHARE_PRECISION uses 60 bits
         // so liquidity * SHARE_PRECISION can't overflow 256 bits
         liquidity = uint128(
             (liquidity * SHARE_PRECISION) / existingShareSupply
         );
-        (amount0, amount1, ) = _getReserves(liquidity);
+        (amount0, amount1) = _getReserves(key, liquidity);
     }
 
-    /// @inheritdoc IBunni
-    function getReserves()
+    /// @inheritdoc IBunniHub
+    function getReserves(BunniKey calldata key)
+        external
+        view
+        override
+        returns (uint112 reserve0, uint112 reserve1)
+    {
+        (uint128 existingLiquidity, , , , ) = key.pool.positions(
+            _computePositionKey(key)
+        );
+        return _getReserves(key, existingLiquidity);
+    }
+
+    /// @inheritdoc IBunniHub
+    function getBunni(BunniKey calldata key)
         public
         view
         override
-        returns (
-            uint112 reserve0,
-            uint112 reserve1,
-            uint32 blockTimestampLast
-        )
+        returns (IBunniToken token)
     {
-        (uint128 existingLiquidity, , , , ) = pool.positions(positionKey);
-        return _getReserves(existingLiquidity);
+        token = BunniToken(
+            address(
+                uint160(
+                    uint256(
+                        keccak256(
+                            abi.encodePacked(
+                                // Prefix:
+                                bytes1(0xFF),
+                                // Creator:
+                                address(this),
+                                // Salt:
+                                bytes32(0),
+                                // Bytecode hash:
+                                keccak256(
+                                    abi.encodePacked(
+                                        // Deployment bytecode:
+                                        type(BunniToken).creationCode,
+                                        // Constructor arguments:
+                                        abi.encode(key)
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            ) // Convert the CREATE2 hash into an address.
+        );
+
+        uint256 tokenCodeLength;
+        assembly {
+            tokenCodeLength := extcodesize(token)
+        }
+
+        if (tokenCodeLength == 0) {
+            return BunniToken(address(0));
+        }
+    }
+
+    /// -----------------------------------------------------------------------
+    /// Owner functions
+    /// -----------------------------------------------------------------------
+
+    /// @inheritdoc IBunniHub
+    function sweepTokens(IERC20[] calldata tokenList, address recipient)
+        external
+        override
+        onlyOwner
+    {
+        for (uint256 i = 0; i < tokenList.length; i++) {
+            SafeTransferLib.safeTransfer(
+                tokenList[i],
+                recipient,
+                tokenList[i].balanceOf(address(this))
+            );
+        }
+    }
+
+    /// @inheritdoc IBunniHub
+    function setProtocolFee(uint256 value) external override onlyOwner {
+        require(value <= MAX_PROTOCOL_FEE, "MAX");
+        protocolFee = value;
+        emit SetProtocolFee(value);
     }
 
     /// -----------------------------------------------------------
     /// Internal functions
     /// -----------------------------------------------------------
 
-    /// @notice Mints share tokens (this) to the recipient based on the amount of liquidity added.
+    /// @notice Mints share tokens to the recipient based on the amount of liquidity added.
+    /// @param key The Bunni position's key
     /// @param recipient The recipient of the share tokens
     /// @param addedLiquidity The amount of liquidity added
     /// @param existingLiquidity The amount of existing liquidity before the add
     /// @return shares The amount of share tokens minted to the sender.
     function _mintShares(
+        BunniKey calldata key,
         address recipient,
         uint128 addedLiquidity,
         uint128 existingLiquidity
     ) internal virtual returns (uint256 shares) {
-        uint256 existingShareSupply = totalSupply;
+        IBunniToken shareToken = getBunni(key);
+        require(address(shareToken) != address(0), "WHAT");
+
+        uint256 existingShareSupply = shareToken.totalSupply();
         if (existingShareSupply == 0) {
             // no existing shares, bootstrap at rate 1:1
             shares = addedLiquidity;
@@ -395,7 +518,15 @@ contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
         }
 
         // mint shares to sender
-        _mint(recipient, shares);
+        shareToken.mint(recipient, shares);
+    }
+
+    function _computePositionKey(BunniKey calldata key)
+        internal
+        view
+        returns (bytes32)
+    {
+        return PositionKey.compute(address(this), key.tickLower, key.tickUpper);
     }
 
     /// @notice Cast a uint256 to a uint112, revert on overflow
@@ -406,18 +537,14 @@ contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
     }
 
     /// @dev See getReserves
-    function _getReserves(uint128 existingLiquidity)
+    function _getReserves(BunniKey calldata key, uint128 existingLiquidity)
         internal
         view
-        returns (
-            uint112 reserve0,
-            uint112 reserve1,
-            uint32 blockTimestampLast
-        )
+        returns (uint112 reserve0, uint112 reserve1)
     {
-        (uint160 sqrtRatioX96, , , , , , ) = pool.slot0();
-        uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(tickLower);
-        uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(tickUpper);
+        (uint160 sqrtRatioX96, , , , , , ) = key.pool.slot0();
+        uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(key.tickLower);
+        uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(key.tickUpper);
         (uint256 amount0, uint256 amount1) = LiquidityAmounts
             .getAmountsForLiquidity(
                 sqrtRatioX96,
@@ -428,6 +555,5 @@ contract Bunni is IBunni, ERC20, LiquidityManagement, Multicall {
 
         reserve0 = _toUint112(amount0);
         reserve1 = _toUint112(amount1);
-        blockTimestampLast = uint32(block.timestamp);
     }
 }

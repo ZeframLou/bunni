@@ -1,8 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity >=0.7.5;
+pragma solidity >=0.5.0;
 pragma abicoder v2;
 
+import "../base/Structs.sol";
+import {IBunniHub} from "./IBunniHub.sol";
+
+/// @title BunniMigrator
+/// @author zefram.eth
+/// @notice Migrates Uniswap v2 LP tokens to Bunni LP tokens
 interface IBunniMigrator {
     struct MigrateParams {
         address pair; // the Uniswap v2-compatible pair
@@ -10,7 +16,7 @@ interface IBunniMigrator {
         uint8 percentageToMigrate; // represented as a numerator over 100
         address token0;
         address token1;
-        address bunni;
+        BunniKey key;
         uint256 amount0Min; // must be discounted by percentageToMigrate
         uint256 amount1Min; // must be discounted by percentageToMigrate
         address recipient;
@@ -27,6 +33,8 @@ interface IBunniMigrator {
     function migrate(MigrateParams calldata params)
         external
         returns (uint256 sharesMinted);
+
+    function hub() external view returns (IBunniHub);
 
     function WETH9() external view returns (address);
 }

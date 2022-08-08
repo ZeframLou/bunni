@@ -11,13 +11,13 @@ import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {IUniswapV3Factory} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
-import {Bunni} from "../Bunni.sol";
+import "../base/Structs.sol";
+import {BunniHub} from "../BunniHub.sol";
 import {SwapRouter} from "./lib/SwapRouter.sol";
-import {IBunni} from "../interfaces/IBunni.sol";
 import {ERC20Mock} from "./mocks/ERC20Mock.sol";
 import {WETH9Mock} from "./mocks/WETH9Mock.sol";
-import {BunniFactory} from "../BunniFactory.sol";
-import {IBunniFactory} from "../interfaces/IBunniFactory.sol";
+import {IBunniHub} from "../interfaces/IBunniHub.sol";
+import {IBunniToken} from "../interfaces/IBunniToken.sol";
 import {UniswapDeployer} from "./lib/UniswapDeployer.sol";
 
 contract BunniTest is Test, UniswapDeployer {
@@ -32,9 +32,10 @@ contract BunniTest is Test, UniswapDeployer {
     ERC20Mock token0;
     ERC20Mock token1;
     WETH9Mock weth;
-    IBunniFactory bunniFactory;
-    IBunni bunni;
+    IBunniHub hub;
+    IBunniToken bunniToken;
     uint24 fee;
+    BunniKey key;
 
     function setUp() public {
         // initialize uniswap
@@ -52,27 +53,24 @@ contract BunniTest is Test, UniswapDeployer {
         weth = new WETH9Mock();
         router = new SwapRouter(address(factory), address(weth));
 
-        // initialize bunni factory
-        bunniFactory = new BunniFactory(address(weth), PROTOCOL_FEE);
+        // initialize bunni hub
+        hub = new BunniHub(address(factory), address(weth), PROTOCOL_FEE);
 
         // initialize bunni
-        bunni = bunniFactory.createBunni(
-            "Bunni LP",
-            "BUNNI-LP",
-            pool,
-            -10000,
-            10000
-        );
+        key = BunniKey({pool: pool, tickLower: -10000, tickUpper: 10000});
+        bunniToken = hub.deployBunni(key);
 
         // approve tokens
-        token0.approve(address(bunni), type(uint256).max);
+        token0.approve(address(hub), type(uint256).max);
         token0.approve(address(router), type(uint256).max);
-        token1.approve(address(bunni), type(uint256).max);
+        token1.approve(address(hub), type(uint256).max);
         token1.approve(address(router), type(uint256).max);
     }
 
     function test_createBunni() public {
-        bunniFactory.createBunni("Bunni LP", "BUNNI-LP", pool, -10, 10);
+        hub.deployBunni(
+            BunniKey({pool: pool, tickLower: -100, tickUpper: 100})
+        );
     }
 
     function test_deposit() public {
@@ -94,7 +92,7 @@ contract BunniTest is Test, UniswapDeployer {
         // check token balances
         assertEqDecimal(token0.balanceOf(address(this)), 0, DECIMALS);
         assertEqDecimal(token1.balanceOf(address(this)), 0, DECIMALS);
-        assertEqDecimal(bunni.balanceOf(address(this)), shares, DECIMALS);
+        assertEqDecimal(bunniToken.balanceOf(address(this)), shares, DECIMALS);
     }
 
     function test_withdraw() public {
@@ -104,14 +102,16 @@ contract BunniTest is Test, UniswapDeployer {
         (uint256 shares, , , ) = _makeDeposit(depositAmount0, depositAmount1);
 
         // withdraw
-        IBunni.WithdrawParams memory withdrawParams = IBunni.WithdrawParams({
-            recipient: address(this),
-            shares: shares,
-            amount0Min: 0,
-            amount1Min: 0,
-            deadline: block.timestamp
-        });
-        (, uint256 withdrawAmount0, uint256 withdrawAmount1) = bunni.withdraw(
+        IBunniHub.WithdrawParams memory withdrawParams = IBunniHub
+            .WithdrawParams({
+                key: key,
+                recipient: address(this),
+                shares: shares,
+                amount0Min: 0,
+                amount1Min: 0,
+                deadline: block.timestamp
+            });
+        (, uint256 withdrawAmount0, uint256 withdrawAmount1) = hub.withdraw(
             withdrawParams
         );
 
@@ -131,7 +131,7 @@ contract BunniTest is Test, UniswapDeployer {
             depositAmount1 - 1,
             DECIMALS
         );
-        assertEqDecimal(bunni.balanceOf(address(this)), 0, DECIMALS);
+        assertEqDecimal(bunniToken.balanceOf(address(this)), 0, DECIMALS);
     }
 
     function test_compound() public {
@@ -178,8 +178,8 @@ contract BunniTest is Test, UniswapDeployer {
         }
 
         // compound
-        (uint256 addedLiquidity, uint256 amount0, uint256 amount1) = bunni
-            .compound();
+        (uint256 addedLiquidity, uint256 amount0, uint256 amount1) = hub
+            .compound(key);
 
         // check added liquidity
         assertGtDecimal(addedLiquidity, 0, DECIMALS);
@@ -187,8 +187,8 @@ contract BunniTest is Test, UniswapDeployer {
         assertGtDecimal(amount1, 0, DECIMALS);
 
         // check token balances
-        assertLtDecimal(token0.balanceOf(address(bunni)), EPSILON, DECIMALS);
-        assertLtDecimal(token1.balanceOf(address(bunni)), EPSILON, DECIMALS);
+        assertLeDecimal(token0.balanceOf(address(hub)), EPSILON, DECIMALS);
+        assertLeDecimal(token1.balanceOf(address(hub)), EPSILON, DECIMALS);
     }
 
     function test_pricePerFullShare() public {
@@ -202,8 +202,8 @@ contract BunniTest is Test, UniswapDeployer {
             uint256 newAmount1
         ) = _makeDeposit(depositAmount0, depositAmount1);
 
-        (uint128 liquidity, uint256 amount0, uint256 amount1) = bunni
-            .pricePerFullShare();
+        (uint128 liquidity, uint256 amount0, uint256 amount1) = hub
+            .pricePerFullShare(key);
 
         assertEqDecimal(
             liquidity,
@@ -229,7 +229,8 @@ contract BunniTest is Test, UniswapDeployer {
 
         // deposit tokens
         // max slippage is 1%
-        IBunni.DepositParams memory depositParams = IBunni.DepositParams({
+        IBunniHub.DepositParams memory depositParams = IBunniHub.DepositParams({
+            key: key,
             amount0Desired: depositAmount0,
             amount1Desired: depositAmount1,
             amount0Min: (depositAmount0 * 99) / 100,
@@ -237,6 +238,6 @@ contract BunniTest is Test, UniswapDeployer {
             deadline: block.timestamp,
             recipient: address(this)
         });
-        return bunni.deposit(depositParams);
+        return hub.deposit(depositParams);
     }
 }
