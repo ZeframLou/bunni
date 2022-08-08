@@ -20,7 +20,7 @@ import {IBunniHub} from "../interfaces/IBunniHub.sol";
 import {IBunniToken} from "../interfaces/IBunniToken.sol";
 import {UniswapDeployer} from "./lib/UniswapDeployer.sol";
 
-contract BunniTest is Test, UniswapDeployer {
+contract BunniHubTest is Test, UniswapDeployer {
     uint256 constant PRECISION = 10**18;
     uint8 constant DECIMALS = 18;
     uint256 constant PROTOCOL_FEE = 5e17;
@@ -58,7 +58,7 @@ contract BunniTest is Test, UniswapDeployer {
 
         // initialize bunni
         key = BunniKey({pool: pool, tickLower: -10000, tickUpper: 10000});
-        bunniToken = hub.deployBunni(key);
+        bunniToken = hub.deployBunniToken(key);
 
         // approve tokens
         token0.approve(address(hub), type(uint256).max);
@@ -67,8 +67,8 @@ contract BunniTest is Test, UniswapDeployer {
         token1.approve(address(router), type(uint256).max);
     }
 
-    function test_createBunni() public {
-        hub.deployBunni(
+    function test_deployBunniToken() public {
+        hub.deployBunniToken(
             BunniKey({pool: pool, tickLower: -100, tickUpper: 100})
         );
     }

@@ -2,8 +2,10 @@
 
 pragma solidity >=0.5.0;
 
-import {IERC20} from "./IERC20.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+
+import {IERC20} from "./IERC20.sol";
+import {IBunniHub} from "./IBunniHub.sol";
 
 /// @title BunniToken
 /// @author zefram.eth
@@ -15,7 +17,7 @@ interface IBunniToken is IERC20 {
 
     function tickUpper() external view returns (int24);
 
-    function hub() external view returns (address);
+    function hub() external view returns (IBunniHub);
 
     function mint(address to, uint256 amount) external;
 

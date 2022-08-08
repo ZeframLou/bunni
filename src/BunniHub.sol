@@ -10,10 +10,10 @@ import {FullMath} from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
 
 import {Multicall} from "@uniswap/v3-periphery/contracts/base/Multicall.sol";
 import {SelfPermit} from "@uniswap/v3-periphery/contracts/base/SelfPermit.sol";
-import {PositionKey} from "@uniswap/v3-periphery/contracts/libraries/PositionKey.sol";
 import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
 import "./base/Structs.sol";
+import {CREATE3} from "./lib/CREATE3.sol";
 import {BunniToken} from "./BunniToken.sol";
 import {IERC20} from "./interfaces/IERC20.sol";
 import {IBunniHub} from "./interfaces/IBunniHub.sol";
@@ -81,7 +81,13 @@ contract BunniHub is
         )
     {
         (uint128 existingLiquidity, , , , ) = params.key.pool.positions(
-            _computePositionKey(params.key)
+            keccak256(
+                abi.encodePacked(
+                    address(this),
+                    params.key.tickLower,
+                    params.key.tickUpper
+                )
+            )
         );
         (addedLiquidity, amount0, amount1) = _addLiquidity(
             LiquidityManagement.AddLiquidityParams({
@@ -123,12 +129,18 @@ contract BunniHub is
             uint256 amount1
         )
     {
-        IBunniToken shareToken = getBunni(params.key);
+        IBunniToken shareToken = getBunniToken(params.key);
         require(address(shareToken) != address(0), "WHAT");
 
         uint256 currentTotalSupply = shareToken.totalSupply();
         (uint128 existingLiquidity, , , , ) = params.key.pool.positions(
-            _computePositionKey(params.key)
+            keccak256(
+                abi.encodePacked(
+                    address(this),
+                    params.key.tickLower,
+                    params.key.tickUpper
+                )
+            )
         );
 
         // allow collecting to address(this) with address 0
@@ -200,7 +212,15 @@ contract BunniHub is
         key.pool.burn(key.tickLower, key.tickUpper, 0);
         (, , , uint128 cachedFeesOwed0, uint128 cachedFeesOwed1) = key
             .pool
-            .positions(_computePositionKey(key));
+            .positions(
+                keccak256(
+                    abi.encodePacked(
+                        address(this),
+                        key.tickLower,
+                        key.tickUpper
+                    )
+                )
+            );
 
         /// -----------------------------------------------------------
         /// amount0, amount1 are multi-purposed, see comments below
@@ -354,16 +374,27 @@ contract BunniHub is
     }
 
     /// @inheritdoc IBunniHub
-    function deployBunni(BunniKey calldata key)
+    function deployBunniToken(BunniKey calldata key)
         public
         override
         returns (IBunniToken token)
     {
-        token = new BunniToken{salt: bytes32(0)}(key);
+        bytes32 bunniKeyHash = keccak256(abi.encode(key));
+
+        token = IBunniToken(
+            CREATE3.deploy(
+                bunniKeyHash,
+                abi.encodePacked(
+                    type(BunniToken).creationCode,
+                    abi.encode(this, key)
+                ),
+                0
+            )
+        );
 
         emit NewBunni(
             token,
-            keccak256(abi.encode(key)),
+            bunniKeyHash,
             key.pool,
             key.tickLower,
             key.tickUpper
@@ -386,13 +417,17 @@ contract BunniHub is
             uint256 amount1
         )
     {
-        IBunniToken shareToken = getBunni(key);
+        IBunniToken shareToken = getBunniToken(key);
         uint256 existingShareSupply = shareToken.totalSupply();
         if (existingShareSupply == 0) {
             return (0, 0, 0);
         }
 
-        (liquidity, , , , ) = key.pool.positions(_computePositionKey(key));
+        (liquidity, , , , ) = key.pool.positions(
+            keccak256(
+                abi.encodePacked(address(this), key.tickLower, key.tickUpper)
+            )
+        );
         // liquidity is uint128, SHARE_PRECISION uses 60 bits
         // so liquidity * SHARE_PRECISION can't overflow 256 bits
         liquidity = uint128(
@@ -409,45 +444,21 @@ contract BunniHub is
         returns (uint112 reserve0, uint112 reserve1)
     {
         (uint128 existingLiquidity, , , , ) = key.pool.positions(
-            _computePositionKey(key)
+            keccak256(
+                abi.encodePacked(address(this), key.tickLower, key.tickUpper)
+            )
         );
         return _getReserves(key, existingLiquidity);
     }
 
     /// @inheritdoc IBunniHub
-    function getBunni(BunniKey calldata key)
+    function getBunniToken(BunniKey calldata key)
         public
         view
         override
         returns (IBunniToken token)
     {
-        token = BunniToken(
-            address(
-                uint160(
-                    uint256(
-                        keccak256(
-                            abi.encodePacked(
-                                // Prefix:
-                                bytes1(0xFF),
-                                // Creator:
-                                address(this),
-                                // Salt:
-                                bytes32(0),
-                                // Bytecode hash:
-                                keccak256(
-                                    abi.encodePacked(
-                                        // Deployment bytecode:
-                                        type(BunniToken).creationCode,
-                                        // Constructor arguments:
-                                        abi.encode(key)
-                                    )
-                                )
-                            )
-                        )
-                    )
-                )
-            ) // Convert the CREATE2 hash into an address.
-        );
+        token = IBunniToken(CREATE3.getDeployed(keccak256(abi.encode(key))));
 
         uint256 tokenCodeLength;
         assembly {
@@ -455,7 +466,7 @@ contract BunniHub is
         }
 
         if (tokenCodeLength == 0) {
-            return BunniToken(address(0));
+            return IBunniToken(address(0));
         }
     }
 
@@ -501,7 +512,7 @@ contract BunniHub is
         uint128 addedLiquidity,
         uint128 existingLiquidity
     ) internal virtual returns (uint256 shares) {
-        IBunniToken shareToken = getBunni(key);
+        IBunniToken shareToken = getBunniToken(key);
         require(address(shareToken) != address(0), "WHAT");
 
         uint256 existingShareSupply = shareToken.totalSupply();
@@ -519,14 +530,6 @@ contract BunniHub is
 
         // mint shares to sender
         shareToken.mint(recipient, shares);
-    }
-
-    function _computePositionKey(BunniKey calldata key)
-        internal
-        view
-        returns (bytes32)
-    {
-        return PositionKey.compute(address(this), key.tickLower, key.tickUpper);
     }
 
     /// @notice Cast a uint256 to a uint112, revert on overflow

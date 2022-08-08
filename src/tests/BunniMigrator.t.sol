@@ -83,7 +83,7 @@ contract BunniMigratorTest is Test, UniswapDeployer {
 
         // initialize bunni
         key = BunniKey({pool: pool, tickLower: -10000, tickUpper: 10000});
-        bunniToken = hub.deployBunni(key);
+        bunniToken = hub.deployBunniToken(key);
 
         // initialize migrator
         migrator = new BunniMigrator(hub, address(weth));

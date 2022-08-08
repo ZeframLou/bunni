@@ -174,7 +174,7 @@ interface IBunniHub is IMulticall, ISelfPermit, ILiquidityManagement {
     /// @notice Deploys the BunniToken contract for a Bunni position.
     /// @param key The Bunni position's key
     /// @return token The deployed BunniToken
-    function deployBunni(BunniKey calldata key)
+    function deployBunniToken(BunniKey calldata key)
         external
         returns (IBunniToken token);
 
@@ -206,7 +206,7 @@ interface IBunniHub is IMulticall, ISelfPermit, ILiquidityManagement {
     /// If the contract hasn't been created yet, returns 0.
     /// @param key The Bunni position's key
     /// @return token The BunniToken contract
-    function getBunni(BunniKey calldata key)
+    function getBunniToken(BunniKey calldata key)
         external
         view
         returns (IBunniToken token);
