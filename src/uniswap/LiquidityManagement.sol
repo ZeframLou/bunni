@@ -7,8 +7,9 @@ import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Po
 import {IUniswapV3MintCallback} from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
 
 import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
-
 import {PeripheryPayments, PeripheryImmutableState} from "@uniswap/v3-periphery/contracts/base/PeripheryPayments.sol";
+
+import "../base/Structs.sol";
 import {ILiquidityManagement} from "../interfaces/ILiquidityManagement.sol";
 
 /// @title Liquidity management functions
@@ -17,29 +18,15 @@ abstract contract LiquidityManagement is
     ILiquidityManagement,
     PeripheryPayments
 {
-    /// @notice The Uniswap v3 pool
-    IUniswapV3Pool public immutable override pool;
-    /// @notice The Uniswap pool's token0
-    address public immutable override token0;
-    /// @notice The Uniswap pool's token1
-    address public immutable override token1;
-    /// @notice The lower tick of the liquidity position
-    int24 public immutable override tickLower;
-    /// @notice The upper tick of the liquidity position
-    int24 public immutable override tickUpper;
+    constructor(address factory_, address WETH9_)
+        PeripheryImmutableState(factory_, WETH9_)
+    {}
 
-    constructor(
-        IUniswapV3Pool _pool,
-        int24 _tickLower,
-        int24 _tickUpper,
-        address _factory,
-        address _WETH9
-    ) PeripheryImmutableState(_factory, _WETH9) {
-        pool = _pool;
-        token0 = _pool.token0();
-        token1 = _pool.token1();
-        tickLower = _tickLower;
-        tickUpper = _tickUpper;
+    /// @param pool The Uniswap v3 pool
+    /// @param payer The address to pay for the required tokens
+    struct MintCallbackData {
+        IUniswapV3Pool pool;
+        address payer;
     }
 
     /// @inheritdoc IUniswapV3MintCallback
@@ -48,14 +35,36 @@ abstract contract LiquidityManagement is
         uint256 amount1Owed,
         bytes calldata data
     ) external override {
-        address payer = abi.decode(data, (address));
-        require(msg.sender == address(pool), "WHO");
+        MintCallbackData memory decodedData = abi.decode(
+            data,
+            (MintCallbackData)
+        );
+        require(msg.sender == address(decodedData.pool), "WHO");
 
-        if (amount0Owed > 0) pay(token0, payer, msg.sender, amount0Owed);
-        if (amount1Owed > 0) pay(token1, payer, msg.sender, amount1Owed);
+        if (amount0Owed > 0)
+            pay(
+                decodedData.pool.token0(),
+                decodedData.payer,
+                msg.sender,
+                amount0Owed
+            );
+        if (amount1Owed > 0)
+            pay(
+                decodedData.pool.token1(),
+                decodedData.payer,
+                msg.sender,
+                amount1Owed
+            );
     }
 
+    /// @param key The Bunni position's key
+    /// @param recipient The recipient of the liquidity position
+    /// @param amount0Desired The token0 amount to use
+    /// @param amount1Desired The token1 amount to use
+    /// @param amount0Min The minimum token0 amount to use
+    /// @param amount1Min The minimum token1 amount to use
     struct AddLiquidityParams {
+        BunniKey key;
         address recipient;
         uint256 amount0Desired;
         uint256 amount1Desired;
@@ -78,9 +87,13 @@ abstract contract LiquidityManagement is
 
         // compute the liquidity amount
         {
-            (uint160 sqrtPriceX96, , , , , , ) = pool.slot0();
-            uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(tickLower);
-            uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(tickUpper);
+            (uint160 sqrtPriceX96, , , , , , ) = params.key.pool.slot0();
+            uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(
+                params.key.tickLower
+            );
+            uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(
+                params.key.tickUpper
+            );
 
             liquidity = LiquidityAmounts.getLiquidityForAmounts(
                 sqrtPriceX96,
@@ -91,12 +104,14 @@ abstract contract LiquidityManagement is
             );
         }
 
-        (amount0, amount1) = pool.mint(
+        (amount0, amount1) = params.key.pool.mint(
             params.recipient,
-            tickLower,
-            tickUpper,
+            params.key.tickLower,
+            params.key.tickUpper,
             liquidity,
-            abi.encode(msg.sender)
+            abi.encode(
+                MintCallbackData({pool: params.key.pool, payer: msg.sender})
+            )
         );
 
         require(

@@ -3,7 +3,7 @@
 pragma solidity 0.7.6;
 pragma abicoder v2;
 
-import {DSTest} from "ds-test/test.sol";
+import "forge-std/Test.sol";
 
 import {IUniswapV2Pair} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import {IUniswapV2Factory} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
@@ -14,18 +14,18 @@ import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {IUniswapV3Factory} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
-import {Bunni} from "../Bunni.sol";
+import "../base/Structs.sol";
+import {BunniHub} from "../BunniHub.sol";
 import {SwapRouter} from "./lib/SwapRouter.sol";
-import {IBunni} from "../interfaces/IBunni.sol";
 import {ERC20Mock} from "./mocks/ERC20Mock.sol";
 import {WETH9Mock} from "./mocks/WETH9Mock.sol";
-import {BunniFactory} from "../BunniFactory.sol";
 import {BunniMigrator} from "../BunniMigrator.sol";
+import {IBunniHub} from "../interfaces/IBunniHub.sol";
+import {IBunniToken} from "../interfaces/IBunniToken.sol";
 import {UniswapDeployer} from "./lib/UniswapDeployer.sol";
-import {IBunniFactory} from "../interfaces/IBunniFactory.sol";
 import {IBunniMigrator} from "../interfaces/IBunniMigrator.sol";
 
-contract BunniMigratorTest is DSTest, UniswapDeployer {
+contract BunniMigratorTest is Test, UniswapDeployer {
     uint256 constant PRECISION = 10**18;
     uint8 constant DECIMALS = 18;
     uint256 constant PROTOCOL_FEE = 5e17;
@@ -48,8 +48,9 @@ contract BunniMigratorTest is DSTest, UniswapDeployer {
     IUniswapV2Pair v2Pair;
 
     // bunni
-    IBunniFactory bunniFactory;
-    IBunni bunni;
+    BunniKey key;
+    IBunniHub hub;
+    IBunniToken bunniToken;
     BunniMigrator migrator;
 
     function setUp() public {
@@ -77,29 +78,24 @@ contract BunniMigratorTest is DSTest, UniswapDeployer {
             v2Factory.createPair(address(token0), address(token1))
         );
 
-        // initialize migrator
-        migrator = new BunniMigrator(address(weth));
-
-        // initialize bunni factory
-        bunniFactory = new BunniFactory(address(weth), PROTOCOL_FEE);
+        // initialize bunni hub
+        hub = new BunniHub(address(factory), address(weth), PROTOCOL_FEE);
 
         // initialize bunni
-        bunni = bunniFactory.createBunni(
-            "Bunni LP",
-            "BUNNI-LP",
-            pool,
-            -10000,
-            10000
-        );
+        key = BunniKey({pool: pool, tickLower: -10000, tickUpper: 10000});
+        bunniToken = hub.deployBunniToken(key);
+
+        // initialize migrator
+        migrator = new BunniMigrator(hub, address(weth));
 
         // approve token0
-        token0.approve(address(bunni), type(uint256).max);
+        token0.approve(address(hub), type(uint256).max);
         token0.approve(address(router), type(uint256).max);
         token0.approve(address(migrator), type(uint256).max);
         token0.approve(address(v2Router), type(uint256).max);
 
         // approve token1
-        token1.approve(address(bunni), type(uint256).max);
+        token1.approve(address(hub), type(uint256).max);
         token1.approve(address(router), type(uint256).max);
         token1.approve(address(migrator), type(uint256).max);
         token1.approve(address(v2Router), type(uint256).max);
@@ -131,7 +127,7 @@ contract BunniMigratorTest is DSTest, UniswapDeployer {
                 percentageToMigrate: 100,
                 token0: address(token0),
                 token1: address(token1),
-                bunni: address(bunni),
+                key: key,
                 amount0Min: 0,
                 amount1Min: 0,
                 recipient: address(this),
@@ -143,12 +139,16 @@ contract BunniMigratorTest is DSTest, UniswapDeployer {
         // check added uni v3 liquidity
         uint256 mintAmount = 1000 * PRECISION;
         uint256 minLP = 1001;
-        (uint112 reserve0, uint112 reserve1, ) = bunni.getReserves();
+        (uint112 reserve0, uint112 reserve1) = hub.getReserves(key);
         assertEqDecimal(uint256(reserve0), mintAmount - minLP, DECIMALS);
         assertEqDecimal(uint256(reserve1), mintAmount - minLP, DECIMALS);
 
         // check shares
-        assertEqDecimal(bunni.balanceOf(address(this)), sharesMinted, DECIMALS);
-        assertEqDecimal(sharesMinted, bunni.totalSupply(), DECIMALS);
+        assertEqDecimal(
+            bunniToken.balanceOf(address(this)),
+            sharesMinted,
+            DECIMALS
+        );
+        assertEqDecimal(sharesMinted, bunniToken.totalSupply(), DECIMALS);
     }
 }

@@ -9,17 +9,22 @@ import {LowGasSafeMath} from "@uniswap/v3-core/contracts/libraries/LowGasSafeMat
 
 import {IWETH9} from "@uniswap/v3-periphery/contracts/interfaces/external/IWETH9.sol";
 
-import {IBunni} from "./interfaces/IBunni.sol";
 import {IERC20} from "./interfaces/IERC20.sol";
+import {IBunniHub} from "./interfaces/IBunniHub.sol";
 import {SafeTransferLib} from "./lib/SafeTransferLib.sol";
 import {IBunniMigrator} from "./interfaces/IBunniMigrator.sol";
 
+/// @title BunniMigrator
+/// @author zefram.eth
+/// @notice Migrates Uniswap v2 LP tokens to Bunni LP tokens
 contract BunniMigrator is IBunniMigrator {
     using LowGasSafeMath for uint256;
 
     address public immutable override WETH9;
+    IBunniHub public immutable override hub;
 
-    constructor(address _WETH9) {
+    constructor(IBunniHub hub_, address _WETH9) {
+        hub = hub_;
         WETH9 = _WETH9;
     }
 
@@ -54,12 +59,12 @@ contract BunniMigrator is IBunniMigrator {
         // approve the position manager up to the maximum token amounts
         SafeTransferLib.safeApprove(
             IERC20(params.token0),
-            params.bunni,
+            address(hub),
             amount0V2ToMigrate
         );
         SafeTransferLib.safeApprove(
             IERC20(params.token1),
-            params.bunni,
+            address(hub),
             amount1V2ToMigrate
         );
 
@@ -67,8 +72,9 @@ contract BunniMigrator is IBunniMigrator {
 
         uint256 amount0V3;
         uint256 amount1V3;
-        (sharesMinted, , amount0V3, amount1V3) = IBunni(params.bunni).deposit(
-            IBunni.DepositParams({
+        (sharesMinted, , amount0V3, amount1V3) = hub.deposit(
+            IBunniHub.DepositParams({
+                key: params.key,
                 amount0Desired: amount0V2ToMigrate,
                 amount1Desired: amount1V2ToMigrate,
                 amount0Min: params.amount0Min,
@@ -83,7 +89,7 @@ contract BunniMigrator is IBunniMigrator {
             if (amount0V3 < amount0V2ToMigrate) {
                 SafeTransferLib.safeApprove(
                     IERC20(params.token0),
-                    params.bunni,
+                    address(hub),
                     0
                 );
             }
@@ -104,7 +110,7 @@ contract BunniMigrator is IBunniMigrator {
             if (amount1V3 < amount1V2ToMigrate) {
                 SafeTransferLib.safeApprove(
                     IERC20(params.token1),
-                    params.bunni,
+                    address(hub),
                     0
                 );
             }

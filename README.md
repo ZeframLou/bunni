@@ -38,7 +38,7 @@ By using Bunni instead of Uniswap V2, projects can merge their liquidity into on
 - ERC-20 LP token as fractional shares of a Uniswap V3 LP position
 - `compound()` for compounding trading fees back into the liquidity pool
 - Arbitrary price range (though we expect most projects to use full range due to its simplicity)
-- Compatabile with OlympusDAO bonds 👀
+- Hub-spoke architecture where the LP logic is built into the hub and the LP tokens are basic ERC-20 tokens with minimal additions. This makes deploying new Bunni LP tokens much cheaper, as well as concentrates user token approvals to the hub to save gas on approvals.
 
 ## Get Started
 
