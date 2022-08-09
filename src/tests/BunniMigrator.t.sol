@@ -16,11 +16,13 @@ import {IUniswapV3Factory} from "@uniswap/v3-core/contracts/interfaces/IUniswapV
 
 import "../base/Structs.sol";
 import {BunniHub} from "../BunniHub.sol";
+import {BunniLens} from "../BunniLens.sol";
 import {SwapRouter} from "./lib/SwapRouter.sol";
 import {ERC20Mock} from "./mocks/ERC20Mock.sol";
 import {WETH9Mock} from "./mocks/WETH9Mock.sol";
 import {BunniMigrator} from "../BunniMigrator.sol";
 import {IBunniHub} from "../interfaces/IBunniHub.sol";
+import {IBunniLens} from "../interfaces/IBunniLens.sol";
 import {IBunniToken} from "../interfaces/IBunniToken.sol";
 import {UniswapDeployer} from "./lib/UniswapDeployer.sol";
 import {IBunniMigrator} from "../interfaces/IBunniMigrator.sol";
@@ -50,6 +52,7 @@ contract BunniMigratorTest is Test, UniswapDeployer {
     // bunni
     BunniKey key;
     IBunniHub hub;
+    IBunniLens lens;
     IBunniToken bunniToken;
     BunniMigrator migrator;
 
@@ -80,6 +83,9 @@ contract BunniMigratorTest is Test, UniswapDeployer {
 
         // initialize bunni hub
         hub = new BunniHub(address(factory), address(weth), PROTOCOL_FEE);
+
+        // initialize bunni lens
+        lens = new BunniLens(hub);
 
         // initialize bunni
         key = BunniKey({pool: pool, tickLower: -10000, tickUpper: 10000});
@@ -139,7 +145,7 @@ contract BunniMigratorTest is Test, UniswapDeployer {
         // check added uni v3 liquidity
         uint256 mintAmount = 1000 * PRECISION;
         uint256 minLP = 1001;
-        (uint112 reserve0, uint112 reserve1) = hub.getReserves(key);
+        (uint112 reserve0, uint112 reserve1) = lens.getReserves(key);
         assertEqDecimal(uint256(reserve0), mintAmount - minLP, DECIMALS);
         assertEqDecimal(uint256(reserve1), mintAmount - minLP, DECIMALS);
 

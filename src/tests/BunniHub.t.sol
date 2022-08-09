@@ -4,6 +4,7 @@ pragma solidity 0.7.6;
 pragma abicoder v2;
 
 import "forge-std/Test.sol";
+import "forge-std/console2.sol";
 
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 
@@ -13,10 +14,12 @@ import {IUniswapV3Factory} from "@uniswap/v3-core/contracts/interfaces/IUniswapV
 
 import "../base/Structs.sol";
 import {BunniHub} from "../BunniHub.sol";
+import {BunniLens} from "../BunniLens.sol";
 import {SwapRouter} from "./lib/SwapRouter.sol";
 import {ERC20Mock} from "./mocks/ERC20Mock.sol";
 import {WETH9Mock} from "./mocks/WETH9Mock.sol";
 import {IBunniHub} from "../interfaces/IBunniHub.sol";
+import {IBunniLens} from "../interfaces/IBunniLens.sol";
 import {IBunniToken} from "../interfaces/IBunniToken.sol";
 import {UniswapDeployer} from "./lib/UniswapDeployer.sol";
 
@@ -33,6 +36,7 @@ contract BunniHubTest is Test, UniswapDeployer {
     ERC20Mock token1;
     WETH9Mock weth;
     IBunniHub hub;
+    IBunniLens lens;
     IBunniToken bunniToken;
     uint24 fee;
     BunniKey key;
@@ -55,6 +59,9 @@ contract BunniHubTest is Test, UniswapDeployer {
 
         // initialize bunni hub
         hub = new BunniHub(address(factory), address(weth), PROTOCOL_FEE);
+
+        // initialize bunni lens
+        lens = new BunniLens(hub);
 
         // initialize bunni
         key = BunniKey({pool: pool, tickLower: -10000, tickUpper: 10000});
@@ -202,7 +209,7 @@ contract BunniHubTest is Test, UniswapDeployer {
             uint256 newAmount1
         ) = _makeDeposit(depositAmount0, depositAmount1);
 
-        (uint128 liquidity, uint256 amount0, uint256 amount1) = hub
+        (uint128 liquidity, uint256 amount0, uint256 amount1) = lens
             .pricePerFullShare(key);
 
         assertEqDecimal(

@@ -178,30 +178,6 @@ interface IBunniHub is IMulticall, ISelfPermit, ILiquidityManagement {
         external
         returns (IBunniToken token);
 
-    /// @notice Computes the amount of liquidity and token amounts each full share token
-    /// can be redeemed for when calling withdraw().
-    /// @param key The Bunni position's key
-    /// @return liquidity_ The liquidity amount that each full share is worth
-    /// @return amount0 The amount of token0 that each full share can be redeemed for
-    /// @return amount1 The amount of token1 that each full share can be redeemed for
-    function pricePerFullShare(BunniKey calldata key)
-        external
-        view
-        returns (
-            uint128 liquidity_,
-            uint256 amount0,
-            uint256 amount1
-        );
-
-    /// @notice Returns the token reserve in the liquidity position.
-    /// @param key The Bunni position's key
-    /// @return reserve0 The amount of token0 in the liquidity position
-    /// @return reserve1 The amount of token1 in the liquidity position
-    function getReserves(BunniKey calldata key)
-        external
-        view
-        returns (uint112 reserve0, uint112 reserve1);
-
     /// @notice Returns the BunniToken contract for a Bunni position.
     /// If the contract hasn't been created yet, returns 0.
     /// @param key The Bunni position's key
