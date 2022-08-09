@@ -15,7 +15,10 @@ import {ILiquidityManagement} from "./ILiquidityManagement.sol";
 
 /// @title BunniHub
 /// @author zefram.eth
-/// @notice The main contract LPs interact with
+/// @notice The main contract LPs interact with. Each BunniKey corresponds to a BunniToken,
+/// which is the ERC20 LP token for the Uniswap V3 position specified by the BunniKey.
+/// Use deposit()/withdraw() to mint/burn LP tokens, and use compound() to compound the swap fees
+/// back into the LP position.
 interface IBunniHub is IMulticall, ISelfPermit, ILiquidityManagement {
     /// @notice Emitted when liquidity is increased via deposit
     /// @param sender The msg.sender address
@@ -102,16 +105,15 @@ interface IBunniHub is IMulticall, ISelfPermit, ILiquidityManagement {
     }
 
     /// @notice Increases the amount of liquidity in a position, with tokens paid by the `msg.sender`
+    /// @dev Must be called after the corresponding BunniToken has been deployed via deployBunniToken()
     /// @param params The input parameters
-    /// pool The Uniswap V3 pool to create the Bunni for
-    /// tickLower The lower tick of the Bunni's UniV3 LP position
-    /// tickUpper The upper tick of the Bunni's UniV3 LP position
+    /// key The Bunni position's key
     /// amount0Desired The desired amount of token0 to be spent,
     /// amount1Desired The desired amount of token1 to be spent,
     /// amount0Min The minimum amount of token0 to spend, which serves as a slippage check,
     /// amount1Min The minimum amount of token1 to spend, which serves as a slippage check,
     /// deadline The time by which the transaction must be included to effect the change
-    /// @return shares The new tokens (this) minted to the sender
+    /// @return shares The new share tokens minted to the sender
     /// @return addedLiquidity The new liquidity amount as a result of the increase
     /// @return amount0 The amount of token0 to acheive resulting liquidity
     /// @return amount1 The amount of token1 to acheive resulting liquidity
@@ -142,8 +144,11 @@ interface IBunniHub is IMulticall, ISelfPermit, ILiquidityManagement {
 
     /// @notice Decreases the amount of liquidity in the position and sends the tokens to the sender.
     /// If withdrawing ETH, need to follow up with unwrapWETH9() and sweepToken()
-    /// @param params recipient The user if not withdrawing ETH, address(0) if withdrawing ETH
-    /// shares The amount of ERC20 tokens (this) to burn,
+    /// @dev Must be called after the corresponding BunniToken has been deployed via deployBunniToken()
+    /// @param params The input parameters
+    /// key The Bunni position's key
+    /// recipient The user if not withdrawing ETH, address(0) if withdrawing ETH
+    /// shares The amount of share tokens to burn,
     /// amount0Min The minimum amount of token0 that should be accounted for the burned liquidity,
     /// amount1Min The minimum amount of token1 that should be accounted for the burned liquidity,
     /// deadline The time by which the transaction must be included to effect the change
@@ -159,6 +164,7 @@ interface IBunniHub is IMulticall, ISelfPermit, ILiquidityManagement {
         );
 
     /// @notice Claims the trading fees earned and uses it to add liquidity.
+    /// @dev Must be called after the corresponding BunniToken has been deployed via deployBunniToken()
     /// @param key The Bunni position's key
     /// @return addedLiquidity The new liquidity amount as a result of the increase
     /// @return amount0 The amount of token0 added to the liquidity position
@@ -171,14 +177,16 @@ interface IBunniHub is IMulticall, ISelfPermit, ILiquidityManagement {
             uint256 amount1
         );
 
-    /// @notice Deploys the BunniToken contract for a Bunni position.
+    /// @notice Deploys the BunniToken contract for a Bunni position. This token
+    /// represents a user's share in the Uniswap V3 LP position.
     /// @param key The Bunni position's key
     /// @return token The deployed BunniToken
     function deployBunniToken(BunniKey calldata key)
         external
         returns (IBunniToken token);
 
-    /// @notice Returns the BunniToken contract for a Bunni position.
+    /// @notice Returns the BunniToken contract for a Bunni position. This token
+    /// represents a user's share in the Uniswap V3 LP position.
     /// If the contract hasn't been created yet, returns 0.
     /// @param key The Bunni position's key
     /// @return token The BunniToken contract

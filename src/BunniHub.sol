@@ -23,7 +23,10 @@ import {LiquidityManagement} from "./uniswap/LiquidityManagement.sol";
 
 /// @title BunniHub
 /// @author zefram.eth
-/// @notice The main contract LPs interact with
+/// @notice The main contract LPs interact with. Each BunniKey corresponds to a BunniToken,
+/// which is the ERC20 LP token for the Uniswap V3 position specified by the BunniKey.
+/// Use deposit()/withdraw() to mint/burn LP tokens, and use compound() to compound the swap fees
+/// back into the LP position.
 contract BunniHub is
     IBunniHub,
     Ownable,
