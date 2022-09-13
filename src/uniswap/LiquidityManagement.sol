@@ -7,20 +7,16 @@ import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Po
 import {IUniswapV3MintCallback} from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
 
 import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
-import {PeripheryPayments, PeripheryImmutableState} from "@uniswap/v3-periphery/contracts/base/PeripheryPayments.sol";
 
 import "../base/Structs.sol";
+import {IERC20} from "../interfaces/IERC20.sol";
+import {SafeTransferLib} from "../lib/SafeTransferLib.sol";
 import {ILiquidityManagement} from "../interfaces/ILiquidityManagement.sol";
 
 /// @title Liquidity management functions
 /// @notice Internal functions for safely managing liquidity in Uniswap V3
-abstract contract LiquidityManagement is
-    ILiquidityManagement,
-    PeripheryPayments
-{
-    constructor(address factory_, address WETH9_)
-        PeripheryImmutableState(factory_, WETH9_)
-    {}
+abstract contract LiquidityManagement is ILiquidityManagement {
+    using SafeTransferLib for IERC20;
 
     /// @param pool The Uniswap v3 pool
     /// @param payer The address to pay for the required tokens
@@ -118,5 +114,24 @@ abstract contract LiquidityManagement is
             amount0 >= params.amount0Min && amount1 >= params.amount1Min,
             "SLIP"
         );
+    }
+
+    /// @param token The token to pay
+    /// @param payer The entity that must pay
+    /// @param recipient The entity that will receive payment
+    /// @param value The amount to pay
+    function pay(
+        address token,
+        address payer,
+        address recipient,
+        uint256 value
+    ) internal {
+        if (payer == address(this)) {
+            // pay with tokens already in the contract (for the exact input multihop case)
+            IERC20(token).safeTransfer(recipient, value);
+        } else {
+            // pull payment
+            IERC20(token).safeTransferFrom(payer, recipient, value);
+        }
     }
 }

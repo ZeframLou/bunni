@@ -58,7 +58,7 @@ contract BunniHubTest is Test, UniswapDeployer {
         router = new SwapRouter(address(factory), address(weth));
 
         // initialize bunni hub
-        hub = new BunniHub(address(factory), address(weth), PROTOCOL_FEE);
+        hub = new BunniHub(PROTOCOL_FEE);
 
         // initialize bunni lens
         lens = new BunniLens(hub);

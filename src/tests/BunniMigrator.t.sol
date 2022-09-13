@@ -82,7 +82,7 @@ contract BunniMigratorTest is Test, UniswapDeployer {
         );
 
         // initialize bunni hub
-        hub = new BunniHub(address(factory), address(weth), PROTOCOL_FEE);
+        hub = new BunniHub(PROTOCOL_FEE);
 
         // initialize bunni lens
         lens = new BunniLens(hub);

@@ -9,6 +9,6 @@ import {IPeripheryPayments} from "@uniswap/v3-periphery/contracts/interfaces/IPe
 
 /// @title Liquidity management functions
 /// @notice Internal functions for safely managing liquidity in Uniswap V3
-interface ILiquidityManagement is IUniswapV3MintCallback, IPeripheryPayments {
+interface ILiquidityManagement is IUniswapV3MintCallback {
 
 }

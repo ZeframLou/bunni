@@ -56,11 +56,7 @@ contract BunniHub is
     /// Constructor
     /// -----------------------------------------------------------
 
-    constructor(
-        address factory_,
-        address WETH9_,
-        uint256 protocolFee_
-    ) LiquidityManagement(factory_, WETH9_) {
+    constructor(uint256 protocolFee_) {
         protocolFee = protocolFee_;
     }
 
