@@ -141,12 +141,6 @@ contract BunniHub is
             )
         );
 
-        // allow collecting to address(this) with address 0
-        // this is used for withdrawing ETH
-        address recipient = params.recipient == address(0)
-            ? address(this)
-            : params.recipient;
-
         // burn shares
         require(params.shares > 0, "0");
         shareToken.burn(msg.sender, params.shares);
@@ -171,7 +165,7 @@ contract BunniHub is
         );
         // collect tokens and give to msg.sender
         (amount0, amount1) = params.key.pool.collect(
-            recipient,
+            params.recipient,
             params.key.tickLower,
             params.key.tickUpper,
             uint128(amount0),
@@ -184,7 +178,7 @@ contract BunniHub is
 
         emit Withdraw(
             msg.sender,
-            recipient,
+            params.recipient,
             keccak256(abi.encode(params.key)),
             removedLiquidity,
             amount0,
