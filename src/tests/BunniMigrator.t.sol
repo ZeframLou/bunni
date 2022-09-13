@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.7.6;
-pragma abicoder v2;
+pragma solidity 0.8.15;
 
 import "forge-std/Test.sol";
 
@@ -14,12 +13,14 @@ import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {IUniswapV3Factory} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
+import {SwapRouter} from "@uniswap/v3-periphery/contracts/SwapRouter.sol";
+
+import {WETH} from "solmate/tokens/WETH.sol";
+
 import "../base/Structs.sol";
 import {BunniHub} from "../BunniHub.sol";
 import {BunniLens} from "../BunniLens.sol";
-import {SwapRouter} from "./lib/SwapRouter.sol";
 import {ERC20Mock} from "./mocks/ERC20Mock.sol";
-import {WETH9Mock} from "./mocks/WETH9Mock.sol";
 import {BunniMigrator} from "../BunniMigrator.sol";
 import {IBunniHub} from "../interfaces/IBunniHub.sol";
 import {IBunniLens} from "../interfaces/IBunniLens.sol";
@@ -36,7 +37,7 @@ contract BunniMigratorTest is Test, UniswapDeployer {
     // tokens
     ERC20Mock token0;
     ERC20Mock token1;
-    WETH9Mock weth;
+    WETH weth;
 
     // uniswap v3
     IUniswapV3Factory factory;
@@ -69,7 +70,7 @@ contract BunniMigratorTest is Test, UniswapDeployer {
             factory.createPool(address(token0), address(token1), fee)
         );
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
-        weth = new WETH9Mock();
+        weth = new WETH();
         router = new SwapRouter(address(factory), address(weth));
 
         // initialize uniswap v2
@@ -82,7 +83,7 @@ contract BunniMigratorTest is Test, UniswapDeployer {
         );
 
         // initialize bunni hub
-        hub = new BunniHub(PROTOCOL_FEE);
+        hub = new BunniHub(address(this), PROTOCOL_FEE);
 
         // initialize bunni lens
         lens = new BunniLens(hub);

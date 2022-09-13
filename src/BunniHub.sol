@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.7.6;
-pragma abicoder v2;
-
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+pragma solidity 0.8.15;
 
 import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import {FullMath} from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
@@ -12,8 +9,10 @@ import {Multicall} from "@uniswap/v3-periphery/contracts/base/Multicall.sol";
 import {SelfPermit} from "@uniswap/v3-periphery/contracts/base/SelfPermit.sol";
 import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 
+import {Owned} from "solmate/auth/Owned.sol";
+import {CREATE3} from "solmate/utils/CREATE3.sol";
+
 import "./base/Structs.sol";
-import {CREATE3} from "./lib/CREATE3.sol";
 import {BunniToken} from "./BunniToken.sol";
 import {IERC20} from "./interfaces/IERC20.sol";
 import {IBunniHub} from "./interfaces/IBunniHub.sol";
@@ -29,7 +28,7 @@ import {LiquidityManagement} from "./uniswap/LiquidityManagement.sol";
 /// back into the LP position.
 contract BunniHub is
     IBunniHub,
-    Ownable,
+    Owned,
     Multicall,
     SelfPermit,
     LiquidityManagement
@@ -56,7 +55,7 @@ contract BunniHub is
     /// Constructor
     /// -----------------------------------------------------------
 
-    constructor(uint256 protocolFee_) {
+    constructor(address owner_, uint256 protocolFee_) Owned(owner_) {
         protocolFee = protocolFee_;
     }
 

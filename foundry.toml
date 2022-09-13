@@ -3,7 +3,15 @@ ffi = false
 fuzz_runs = 256
 optimizer = true
 optimizer_runs = 1000000
-remappings = ["forge-std/=lib/forge-std/src/", "@uniswap/=node_modules/@uniswap/", "@openzeppelin/=node_modules/@openzeppelin/"]
+remappings = [
+  "forge-std/=lib/forge-std/src/",
+  "@uniswap/v3-core/=lib/v3-core/",
+  "@uniswap/v3-periphery/=lib/v3-periphery/",
+  "@uniswap/v2-core/=lib/v2-core/",
+  "@uniswap/v2-periphery/=lib/v2-periphery/",
+  "@openzeppelin/=lib/openzeppelin-contracts/",
+  "solmate/=lib/solmate/src/",
+]
 verbosity = 1
 
 # Extreme Fuzzing CI Profile :P

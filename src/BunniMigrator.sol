@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.7.6;
-pragma abicoder v2;
+pragma solidity 0.8.15;
 
 import {IUniswapV2Pair} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
-
-import {LowGasSafeMath} from "@uniswap/v3-core/contracts/libraries/LowGasSafeMath.sol";
 
 import {IWETH9} from "@uniswap/v3-periphery/contracts/interfaces/external/IWETH9.sol";
 
@@ -18,8 +15,6 @@ import {IBunniMigrator} from "./interfaces/IBunniMigrator.sol";
 /// @author zefram.eth
 /// @notice Migrates Uniswap v2 LP tokens to Bunni LP tokens
 contract BunniMigrator is IBunniMigrator {
-    using LowGasSafeMath for uint256;
-
     address public immutable override WETH9;
     IBunniHub public immutable override hub;
 
@@ -51,9 +46,9 @@ contract BunniMigrator is IBunniMigrator {
             .burn(address(this));
 
         // calculate the amounts to migrate to v3
-        uint256 amount0V2ToMigrate = amount0V2.mul(params.percentageToMigrate) /
+        uint256 amount0V2ToMigrate = (amount0V2 * params.percentageToMigrate) /
             100;
-        uint256 amount1V2ToMigrate = amount1V2.mul(params.percentageToMigrate) /
+        uint256 amount1V2ToMigrate = (amount1V2 * params.percentageToMigrate) /
             100;
 
         // approve the position manager up to the maximum token amounts
