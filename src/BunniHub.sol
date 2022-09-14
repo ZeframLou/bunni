@@ -425,12 +425,17 @@ contract BunniHub is
         override
         onlyOwner
     {
-        for (uint256 i = 0; i < tokenList.length; i++) {
+        uint256 tokenListLength = tokenList.length;
+        for (uint256 i; i < tokenListLength; ) {
             SafeTransferLib.safeTransfer(
                 tokenList[i],
                 recipient,
                 tokenList[i].balanceOf(address(this))
             );
+
+            unchecked {
+                ++i;
+            }
         }
     }
 
