@@ -83,7 +83,7 @@ contract BunniMigratorTest is Test, UniswapDeployer {
         );
 
         // initialize bunni hub
-        hub = new BunniHub(address(this), PROTOCOL_FEE);
+        hub = new BunniHub(factory, address(this), PROTOCOL_FEE);
 
         // initialize bunni lens
         lens = new BunniLens(hub);
@@ -93,7 +93,7 @@ contract BunniMigratorTest is Test, UniswapDeployer {
         bunniToken = hub.deployBunniToken(key);
 
         // initialize migrator
-        migrator = new BunniMigrator(hub, address(weth));
+        migrator = new BunniMigrator(hub);
 
         // approve token0
         token0.approve(address(hub), type(uint256).max);
@@ -138,8 +138,7 @@ contract BunniMigratorTest is Test, UniswapDeployer {
                 amount0Min: 0,
                 amount1Min: 0,
                 recipient: address(this),
-                deadline: block.timestamp,
-                refundAsETH: false
+                deadline: block.timestamp
             })
         );
 

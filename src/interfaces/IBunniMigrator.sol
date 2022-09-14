@@ -21,7 +21,6 @@ interface IBunniMigrator {
         uint256 amount1Min; // must be discounted by percentageToMigrate
         address recipient;
         uint256 deadline;
-        bool refundAsETH;
     }
 
     /// @notice Migrates liquidity to v3 by burning v2 liquidity and minting a new position for v3 using Bunni
@@ -35,6 +34,4 @@ interface IBunniMigrator {
         returns (uint256 sharesMinted);
 
     function hub() external view returns (IBunniHub);
-
-    function WETH9() external view returns (address);
 }
