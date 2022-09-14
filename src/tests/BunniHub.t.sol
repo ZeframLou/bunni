@@ -22,6 +22,7 @@ import {IBunniHub} from "../interfaces/IBunniHub.sol";
 import {IBunniLens} from "../interfaces/IBunniLens.sol";
 import {IBunniToken} from "../interfaces/IBunniToken.sol";
 import {UniswapDeployer} from "./lib/UniswapDeployer.sol";
+import {LiquidityManagement} from "../uniswap/LiquidityManagement.sol";
 
 contract BunniHubTest is Test, UniswapDeployer {
     uint256 constant PRECISION = 10**18;
@@ -219,6 +220,21 @@ contract BunniHubTest is Test, UniswapDeployer {
         );
         assertEqDecimal(amount0, (newAmount0 * PRECISION) / shares, DECIMALS);
         assertEqDecimal(amount1, (newAmount1 * PRECISION) / shares, DECIMALS);
+    }
+
+    function testFail_uniswapV3MintCallback() public {
+        hub.uniswapV3MintCallback(
+            1,
+            1,
+            abi.encode(
+                LiquidityManagement.MintCallbackData({
+                    token0: address(token0),
+                    token1: address(token1),
+                    fee: fee,
+                    payer: address(hub)
+                })
+            )
+        );
     }
 
     function _makeDeposit(uint256 depositAmount0, uint256 depositAmount1)
