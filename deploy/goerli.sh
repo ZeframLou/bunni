@@ -2,9 +2,9 @@
 source .env
 
 # set env variables
-export ADDRESSES_FILE=./deployments/mainnet.json
-export RPC_URL=$RPC_URL_MAINNET
-export OWNER=$OWNER_MAINNET
+export ADDRESSES_FILE=./deployments/goerli.json
+export RPC_URL=$RPC_URL_GOERLI
+export OWNER=$OWNER_GOERLI
 
 # load common utilities
 . $(dirname $0)/common.sh

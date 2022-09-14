@@ -18,3 +18,17 @@ verbosity = 1
 [profile.ci]
 fuzz_runs = 100_000
 verbosity = 4
+
+[rpc_endpoints]
+mainnet = "${RPC_URL_MAINNET}"
+goerli = "${RPC_URL_GOERLI}"
+arbitrum = "${RPC_URL_ARBITRUM}"
+optimism = "${RPC_URL_OPTIMISM}"
+polygon = "${RPC_URL_POLYGON}"
+
+[etherscan]
+mainnet = { key = "${ETHERSCAN_KEY}" }
+goerli = { key = "${ETHERSCAN_KEY}" }
+arbitrum = { key = "${ARBISCAN_KEY}", url = "https://api.arbiscan.io" }
+optimism = { key = "${ETHERSCAN_KEY}" }
+polygon = { key = "${POLYGONSCAN_KEY}", url = "https://api.polygonscan.com" }
