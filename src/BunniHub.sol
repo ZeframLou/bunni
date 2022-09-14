@@ -4,6 +4,7 @@ pragma solidity 0.8.15;
 
 import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import {FullMath} from "@uniswap/v3-core/contracts/libraries/FullMath.sol";
+import {IUniswapV3Factory} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
 import {Multicall} from "@uniswap/v3-periphery/contracts/base/Multicall.sol";
 import {SelfPermit} from "@uniswap/v3-periphery/contracts/base/SelfPermit.sol";
@@ -55,7 +56,11 @@ contract BunniHub is
     /// Constructor
     /// -----------------------------------------------------------
 
-    constructor(address owner_, uint256 protocolFee_) Owned(owner_) {
+    constructor(
+        IUniswapV3Factory factory_,
+        address owner_,
+        uint256 protocolFee_
+    ) Owned(owner_) LiquidityManagement(factory_) {
         protocolFee = protocolFee_;
     }
 
