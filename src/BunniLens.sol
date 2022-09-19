@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.7.6;
-pragma abicoder v2;
+pragma solidity 0.8.15;
 
 import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 

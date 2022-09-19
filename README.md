@@ -8,7 +8,7 @@ ERC-20 LP tokens for Uniswap V3.
 
 Uniswap V3 is awesome for boosting LP income, but it's also far more complex than Uniswap V2/Sushiswap, with ERC-721 NFT LP tokens instead of the ERC-20 LP tokens used by Uniswap V2/Sushiswap.
 
-- Projects perfer to incentivize liquidity on Uniswap V2/Sushiswap, due to the simplicity of the Uniswap V2 contracts and the wide array of battle-proven smart contracts that can be easily forked.
+- Projects prefer to incentivize liquidity on Uniswap V2/Sushiswap, due to the simplicity of the Uniswap V2 contracts and the wide array of battle-proven smart contracts that can be easily forked.
 - Individual liquidity providers prefer Uniswap V3 because they can earn much more fees from the same amount of liquidity.
 
 Thus, projects usually have at least two separate pools of liquidity, one on Uniswap V3 and one on Uniswap V2/Sushiswap. This results in liquidity fragmentation.
@@ -45,6 +45,8 @@ By using Bunni instead of Uniswap V2, projects can merge their liquidity into on
 Install [Foundry](https://github.com/foundry-rs/foundry), then
 
 ```
+npm i -D
+npm run prepare
 forge install
 forge test
 ```

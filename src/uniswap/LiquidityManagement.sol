@@ -1,32 +1,38 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity 0.7.6;
-pragma abicoder v2;
+pragma solidity 0.8.15;
 
 import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import {IUniswapV3Factory} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import {IUniswapV3MintCallback} from "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
 
 import {LiquidityAmounts} from "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
-import {PeripheryPayments, PeripheryImmutableState} from "@uniswap/v3-periphery/contracts/base/PeripheryPayments.sol";
 
 import "../base/Structs.sol";
+import {IERC20} from "../interfaces/IERC20.sol";
+import {SafeTransferLib} from "../lib/SafeTransferLib.sol";
 import {ILiquidityManagement} from "../interfaces/ILiquidityManagement.sol";
 
 /// @title Liquidity management functions
 /// @notice Internal functions for safely managing liquidity in Uniswap V3
-abstract contract LiquidityManagement is
-    ILiquidityManagement,
-    PeripheryPayments
-{
-    constructor(address factory_, address WETH9_)
-        PeripheryImmutableState(factory_, WETH9_)
-    {}
+abstract contract LiquidityManagement is ILiquidityManagement {
+    using SafeTransferLib for IERC20;
 
-    /// @param pool The Uniswap v3 pool
+    /// @param token0 The token0 of the Uniswap pool
+    /// @param token1 The token1 of the Uniswap pool
+    /// @param fee The fee tier of the Uniswap pool
     /// @param payer The address to pay for the required tokens
     struct MintCallbackData {
-        IUniswapV3Pool pool;
+        address token0;
+        address token1;
+        uint24 fee;
         address payer;
+    }
+
+    IUniswapV3Factory public immutable override factory;
+
+    constructor(IUniswapV3Factory factory_) {
+        factory = factory_;
     }
 
     /// @inheritdoc IUniswapV3MintCallback
@@ -39,22 +45,19 @@ abstract contract LiquidityManagement is
             data,
             (MintCallbackData)
         );
-        require(msg.sender == address(decodedData.pool), "WHO");
+
+        // verify caller
+        address computedPool = factory.getPool(
+            decodedData.token0,
+            decodedData.token1,
+            decodedData.fee
+        );
+        require(msg.sender == computedPool, "WHO");
 
         if (amount0Owed > 0)
-            pay(
-                decodedData.pool.token0(),
-                decodedData.payer,
-                msg.sender,
-                amount0Owed
-            );
+            pay(decodedData.token0, decodedData.payer, msg.sender, amount0Owed);
         if (amount1Owed > 0)
-            pay(
-                decodedData.pool.token1(),
-                decodedData.payer,
-                msg.sender,
-                amount1Owed
-            );
+            pay(decodedData.token1, decodedData.payer, msg.sender, amount1Owed);
     }
 
     /// @param key The Bunni position's key
@@ -110,7 +113,12 @@ abstract contract LiquidityManagement is
             params.key.tickUpper,
             liquidity,
             abi.encode(
-                MintCallbackData({pool: params.key.pool, payer: msg.sender})
+                MintCallbackData({
+                    token0: params.key.pool.token0(),
+                    token1: params.key.pool.token1(),
+                    fee: params.key.pool.fee(),
+                    payer: msg.sender
+                })
             )
         );
 
@@ -118,5 +126,24 @@ abstract contract LiquidityManagement is
             amount0 >= params.amount0Min && amount1 >= params.amount1Min,
             "SLIP"
         );
+    }
+
+    /// @param token The token to pay
+    /// @param payer The entity that must pay
+    /// @param recipient The entity that will receive payment
+    /// @param value The amount to pay
+    function pay(
+        address token,
+        address payer,
+        address recipient,
+        uint256 value
+    ) internal {
+        if (payer == address(this)) {
+            // pay with tokens already in the contract (for the exact input multihop case)
+            IERC20(token).safeTransfer(recipient, value);
+        } else {
+            // pull payment
+            IERC20(token).safeTransferFrom(payer, recipient, value);
+        }
     }
 }

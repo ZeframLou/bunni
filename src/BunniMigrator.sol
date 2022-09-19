@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.7.6;
-pragma abicoder v2;
+pragma solidity 0.8.15;
 
 import {IUniswapV2Pair} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
-
-import {LowGasSafeMath} from "@uniswap/v3-core/contracts/libraries/LowGasSafeMath.sol";
 
 import {IWETH9} from "@uniswap/v3-periphery/contracts/interfaces/external/IWETH9.sol";
 
@@ -18,18 +15,10 @@ import {IBunniMigrator} from "./interfaces/IBunniMigrator.sol";
 /// @author zefram.eth
 /// @notice Migrates Uniswap v2 LP tokens to Bunni LP tokens
 contract BunniMigrator is IBunniMigrator {
-    using LowGasSafeMath for uint256;
-
-    address public immutable override WETH9;
     IBunniHub public immutable override hub;
 
-    constructor(IBunniHub hub_, address _WETH9) {
+    constructor(IBunniHub hub_) {
         hub = hub_;
-        WETH9 = _WETH9;
-    }
-
-    receive() external payable {
-        require(msg.sender == WETH9, "Not WETH9");
     }
 
     /// @inheritdoc IBunniMigrator
@@ -51,9 +40,9 @@ contract BunniMigrator is IBunniMigrator {
             .burn(address(this));
 
         // calculate the amounts to migrate to v3
-        uint256 amount0V2ToMigrate = amount0V2.mul(params.percentageToMigrate) /
+        uint256 amount0V2ToMigrate = (amount0V2 * params.percentageToMigrate) /
             100;
-        uint256 amount1V2ToMigrate = amount1V2.mul(params.percentageToMigrate) /
+        uint256 amount1V2ToMigrate = (amount1V2 * params.percentageToMigrate) /
             100;
 
         // approve the position manager up to the maximum token amounts
@@ -95,16 +84,11 @@ contract BunniMigrator is IBunniMigrator {
             }
 
             uint256 refund0 = amount0V2 - amount0V3;
-            if (params.refundAsETH && params.token0 == WETH9) {
-                IWETH9(WETH9).withdraw(refund0);
-                SafeTransferLib.safeTransferETH(msg.sender, refund0);
-            } else {
-                SafeTransferLib.safeTransfer(
-                    IERC20(params.token0),
-                    msg.sender,
-                    refund0
-                );
-            }
+            SafeTransferLib.safeTransfer(
+                IERC20(params.token0),
+                msg.sender,
+                refund0
+            );
         }
         if (amount1V3 < amount1V2) {
             if (amount1V3 < amount1V2ToMigrate) {
@@ -116,16 +100,11 @@ contract BunniMigrator is IBunniMigrator {
             }
 
             uint256 refund1 = amount1V2 - amount1V3;
-            if (params.refundAsETH && params.token1 == WETH9) {
-                IWETH9(WETH9).withdraw(refund1);
-                SafeTransferLib.safeTransferETH(msg.sender, refund1);
-            } else {
-                SafeTransferLib.safeTransfer(
-                    IERC20(params.token1),
-                    msg.sender,
-                    refund1
-                );
-            }
+            SafeTransferLib.safeTransfer(
+                IERC20(params.token1),
+                msg.sender,
+                refund1
+            );
         }
     }
 }

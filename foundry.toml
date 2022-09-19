@@ -3,10 +3,32 @@ ffi = false
 fuzz_runs = 256
 optimizer = true
 optimizer_runs = 1000000
-remappings = ["forge-std/=lib/forge-std/src/", "@uniswap/=node_modules/@uniswap/", "@openzeppelin/=node_modules/@openzeppelin/"]
+remappings = [
+  "forge-std/=lib/forge-std/src/",
+  "@uniswap/v3-core/=lib/v3-core/",
+  "@uniswap/v3-periphery/=lib/v3-periphery/",
+  "@uniswap/v2-core/=lib/v2-core/",
+  "@uniswap/v2-periphery/=lib/v2-periphery/",
+  "@openzeppelin/=lib/openzeppelin-contracts/",
+  "solmate/=lib/solmate/src/",
+]
 verbosity = 1
 
 # Extreme Fuzzing CI Profile :P
 [profile.ci]
 fuzz_runs = 100_000
 verbosity = 4
+
+[rpc_endpoints]
+arbitrum = "${RPC_URL_ARBITRUM}"
+goerli = "${RPC_URL_GOERLI}"
+mainnet = "${RPC_URL_MAINNET}"
+optimism = "${RPC_URL_OPTIMISM}"
+polygon = "${RPC_URL_POLYGON}"
+
+[etherscan]
+arbitrum = {key = "${ARBISCAN_KEY}", url = "https://api.arbiscan.io/api"}
+goerli = {key = "${ETHERSCAN_KEY}", url = "https://api-goerli.etherscan.io/api"}
+mainnet = {key = "${ETHERSCAN_KEY}"}
+optimism = {key = "${ETHERSCAN_KEY}", url = "https://api-optimistic.etherscan.io/api"}
+polygon = {key = "${POLYGONSCAN_KEY}", url = "https://api.polygonscan.com/api"}

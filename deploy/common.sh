@@ -2,12 +2,16 @@ ADDRESSES_FILE=${ADDRESSES_FILE:-./deployments/output.json}
 RPC_URL=${RPC_URL:-http://localhost:8545}
 
 deploy() {
-	NAME=$1
-	ARGS=${@:2}
+	RAW_RETURN_DATA=$(forge script script/Deploy.s.sol:Deploy --rpc-url $RPC_URL -vvvv --json --silent --broadcast --verify --skip-simulation)
+	RETURN_DATA=$(echo $RAW_RETURN_DATA | jq -r '.returns' 2> /dev/null)
 
-	ADDRESS=$(forge create $NAME --json --force --rpc-url=$RPC_URL --private-key=$PRIVATE_KEY --constructor-args $ARGS | jq -r '.deployedTo')
-	saveContract "$NAME" "$ADDRESS"
-	echo "$ADDRESS"
+	hub=$(echo $RETURN_DATA | jq -r '.hub.value')
+	lens=$(echo $RETURN_DATA | jq -r '.lens.value')
+	migrator=$(echo $RETURN_DATA | jq -r '.migrator.value')
+
+	saveContract "BunniHub" "$hub"
+	saveContract "BunniLens" "$lens"
+	saveContract "BunniMigrator" "$migrator"
 }
 
 saveContract() {
@@ -17,12 +21,4 @@ saveContract() {
 	fi
 	result=$(cat "$ADDRESSES_FILE" | jq -r ". + {\"$1\": \"$2\"}")
 	printf %s "$result" >"$ADDRESSES_FILE"
-}
-
-send() {
-	TO=$1
-	SIG=$2
-	ARGS=${@:3}
-
-	cast send --rpc-url=$RPC_URL --private-key=$PRIVATE_KEY $TO $SIG $ARGS
 }

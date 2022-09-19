@@ -1,27 +1,28 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity 0.7.6;
-pragma abicoder v2;
+pragma solidity 0.8.15;
 
 import "forge-std/Test.sol";
 import "forge-std/console2.sol";
 
+import {SwapRouter} from "@uniswap/v3-periphery/contracts/SwapRouter.sol";
 import {ISwapRouter} from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 
 import {TickMath} from "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {IUniswapV3Factory} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
+import {WETH} from "solmate/tokens/WETH.sol";
+
 import "../base/Structs.sol";
 import {BunniHub} from "../BunniHub.sol";
 import {BunniLens} from "../BunniLens.sol";
-import {SwapRouter} from "./lib/SwapRouter.sol";
 import {ERC20Mock} from "./mocks/ERC20Mock.sol";
-import {WETH9Mock} from "./mocks/WETH9Mock.sol";
 import {IBunniHub} from "../interfaces/IBunniHub.sol";
 import {IBunniLens} from "../interfaces/IBunniLens.sol";
 import {IBunniToken} from "../interfaces/IBunniToken.sol";
 import {UniswapDeployer} from "./lib/UniswapDeployer.sol";
+import {LiquidityManagement} from "../uniswap/LiquidityManagement.sol";
 
 contract BunniHubTest is Test, UniswapDeployer {
     uint256 constant PRECISION = 10**18;
@@ -34,7 +35,7 @@ contract BunniHubTest is Test, UniswapDeployer {
     SwapRouter router;
     ERC20Mock token0;
     ERC20Mock token1;
-    WETH9Mock weth;
+    WETH weth;
     IBunniHub hub;
     IBunniLens lens;
     IBunniToken bunniToken;
@@ -54,11 +55,11 @@ contract BunniHubTest is Test, UniswapDeployer {
             factory.createPool(address(token0), address(token1), fee)
         );
         pool.initialize(TickMath.getSqrtRatioAtTick(0));
-        weth = new WETH9Mock();
+        weth = new WETH();
         router = new SwapRouter(address(factory), address(weth));
 
         // initialize bunni hub
-        hub = new BunniHub(address(factory), address(weth), PROTOCOL_FEE);
+        hub = new BunniHub(factory, address(this), PROTOCOL_FEE);
 
         // initialize bunni lens
         lens = new BunniLens(hub);
@@ -219,6 +220,21 @@ contract BunniHubTest is Test, UniswapDeployer {
         );
         assertEqDecimal(amount0, (newAmount0 * PRECISION) / shares, DECIMALS);
         assertEqDecimal(amount1, (newAmount1 * PRECISION) / shares, DECIMALS);
+    }
+
+    function testFail_uniswapV3MintCallback() public {
+        hub.uniswapV3MintCallback(
+            1,
+            1,
+            abi.encode(
+                LiquidityManagement.MintCallbackData({
+                    token0: address(token0),
+                    token1: address(token1),
+                    fee: fee,
+                    payer: address(hub)
+                })
+            )
+        );
     }
 
     function _makeDeposit(uint256 depositAmount0, uint256 depositAmount1)
