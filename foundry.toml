@@ -30,5 +30,5 @@ polygon = "${RPC_URL_POLYGON}"
 arbitrum = {key = "${ARBISCAN_KEY}", url = "https://api.arbiscan.io/api"}
 goerli = {key = "${ETHERSCAN_KEY}", url = "https://api-goerli.etherscan.io/api"}
 mainnet = {key = "${ETHERSCAN_KEY}"}
-optimism = {key = "${ETHERSCAN_KEY}", url = "https://api-optimistic.etherscan.io/api"}
+optimism = {key = "${OPTIMISM_ETHERSCAN_KEY}", url = "https://api-optimistic.etherscan.io/api"}
 polygon = {key = "${POLYGONSCAN_KEY}", url = "https://api.polygonscan.com/api"}

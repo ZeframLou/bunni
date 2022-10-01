@@ -1,8 +1,9 @@
 ADDRESSES_FILE=${ADDRESSES_FILE:-./deployments/output.json}
-RPC_URL=${RPC_URL:-http://localhost:8545}
 
 deploy() {
-	RAW_RETURN_DATA=$(forge script script/Deploy.s.sol:Deploy --rpc-url $RPC_URL -vvvv --json --silent --broadcast --verify --skip-simulation)
+	NETWORK=$1
+
+	RAW_RETURN_DATA=$(forge script script/Deploy.s.sol:Deploy -f $NETWORK -vvvv --json --silent --broadcast --verify --skip-simulation)
 	RETURN_DATA=$(echo $RAW_RETURN_DATA | jq -r '.returns' 2> /dev/null)
 
 	hub=$(echo $RETURN_DATA | jq -r '.hub.value')
