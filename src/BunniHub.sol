@@ -95,6 +95,7 @@ contract BunniHub is
             LiquidityManagement.AddLiquidityParams({
                 key: params.key,
                 recipient: address(this),
+                payer: msg.sender,
                 amount0Desired: params.amount0Desired,
                 amount1Desired: params.amount1Desired,
                 amount0Min: params.amount0Min,
@@ -237,67 +238,22 @@ contract BunniHub is
             uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(key.tickLower);
             uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(key.tickUpper);
 
-            if (sqrtRatioX96 <= sqrtRatioAX96) {
-                // token0 used fully, token1 used partially
-                // compute liquidity using amount0
-                uint128 liquidityIncrease = LiquidityAmounts
-                    .getLiquidityForAmount0(
-                        sqrtRatioAX96,
-                        sqrtRatioBX96,
-                        amount0
-                    );
-                amount1 = LiquidityAmounts.getAmount1ForLiquidity(
-                    sqrtRatioAX96,
-                    sqrtRatioBX96,
-                    liquidityIncrease
-                );
-            } else if (sqrtRatioX96 < sqrtRatioBX96) {
-                // uncertain which token is used fully
-                // compute liquidity using both amounts
-                // and then use the lower one
-                uint128 liquidity0 = LiquidityAmounts.getLiquidityForAmount0(
-                    sqrtRatioX96,
-                    sqrtRatioBX96,
-                    amount0
-                );
-                uint128 liquidity1 = LiquidityAmounts.getLiquidityForAmount1(
-                    sqrtRatioAX96,
-                    sqrtRatioX96,
-                    amount1
-                );
+            // compute the maximum liquidity addable using the accrued fees
+            uint128 maxAddLiquidity = LiquidityAmounts.getLiquidityForAmounts(
+                sqrtRatioX96,
+                sqrtRatioAX96,
+                sqrtRatioBX96,
+                amount0,
+                amount1
+            );
 
-                if (liquidity0 < liquidity1) {
-                    // token0 used fully, token1 used partially
-                    // compute liquidity using amount0
-                    amount1 = LiquidityAmounts.getAmount1ForLiquidity(
-                        sqrtRatioAX96,
-                        sqrtRatioBX96,
-                        liquidity0
-                    );
-                } else {
-                    // token0 used partially, token1 used fully
-                    // compute liquidity using amount1
-                    amount0 = LiquidityAmounts.getAmount0ForLiquidity(
-                        sqrtRatioAX96,
-                        sqrtRatioBX96,
-                        liquidity1
-                    );
-                }
-            } else {
-                // token0 used partially, token1 used fully
-                // compute liquidity using amount1
-                uint128 liquidityIncrease = LiquidityAmounts
-                    .getLiquidityForAmount1(
-                        sqrtRatioAX96,
-                        sqrtRatioBX96,
-                        amount1
-                    );
-                amount0 = LiquidityAmounts.getAmount0ForLiquidity(
-                    sqrtRatioAX96,
-                    sqrtRatioBX96,
-                    liquidityIncrease
-                );
-            }
+            // compute the token amounts corresponding to the max addable liquidity
+            (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
+                sqrtRatioX96,
+                sqrtRatioAX96,
+                sqrtRatioBX96,
+                maxAddLiquidity
+            );
         }
 
         /// -----------------------------------------------------------
@@ -330,6 +286,7 @@ contract BunniHub is
                 LiquidityManagement.AddLiquidityParams({
                     key: key,
                     recipient: address(this),
+                    payer: address(this),
                     amount0Desired: amount0 - fee0,
                     amount1Desired: amount1 - fee1,
                     amount0Min: 0,
@@ -348,6 +305,7 @@ contract BunniHub is
                 LiquidityManagement.AddLiquidityParams({
                     key: key,
                     recipient: address(this),
+                    payer: address(this),
                     amount0Desired: amount0,
                     amount1Desired: amount1,
                     amount0Min: 0,

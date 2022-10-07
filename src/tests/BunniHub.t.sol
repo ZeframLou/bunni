@@ -27,8 +27,7 @@ import {LiquidityManagement} from "../uniswap/LiquidityManagement.sol";
 contract BunniHubTest is Test, UniswapDeployer {
     uint256 constant PRECISION = 10**18;
     uint8 constant DECIMALS = 18;
-    uint256 constant PROTOCOL_FEE = 5e17;
-    uint256 constant EPSILON = 10**13;
+    uint256 constant PROTOCOL_FEE = 5e16;
 
     IUniswapV3Factory factory;
     IUniswapV3Pool pool;
@@ -186,6 +185,9 @@ contract BunniHubTest is Test, UniswapDeployer {
         }
 
         // compound
+        uint256 beforeBalance0 = token0.balanceOf(address(this));
+        uint256 beforeBalance1 = token1.balanceOf(address(this));
+        vm.recordLogs();
         (uint256 addedLiquidity, uint256 amount0, uint256 amount1) = hub
             .compound(key);
 
@@ -194,9 +196,38 @@ contract BunniHubTest is Test, UniswapDeployer {
         assertGtDecimal(amount0, 0, DECIMALS);
         assertGtDecimal(amount1, 0, DECIMALS);
 
+        // check protocol fee
+        // fetch protocol fee directly from logs
+        (uint256 protocolFee0, uint256 protocolFee1) = abi.decode(
+            vm.getRecordedLogs()[7].data,
+            (uint256, uint256)
+        );
+        assertEqDecimal(
+            token0.balanceOf(address(hub)),
+            protocolFee0,
+            DECIMALS,
+            "hub balance0 not equal to protocol fee"
+        );
+        assertEqDecimal(
+            token1.balanceOf(address(hub)),
+            protocolFee1,
+            DECIMALS,
+            "hub balance1 not equal to protocol fee"
+        );
+
         // check token balances
-        assertLeDecimal(token0.balanceOf(address(hub)), EPSILON, DECIMALS);
-        assertLeDecimal(token1.balanceOf(address(hub)), EPSILON, DECIMALS);
+        assertEqDecimal(
+            token0.balanceOf(address(this)),
+            beforeBalance0,
+            DECIMALS,
+            "sender balance0 changed"
+        );
+        assertEqDecimal(
+            token1.balanceOf(address(this)),
+            beforeBalance1,
+            DECIMALS,
+            "sender balance1 changed"
+        );
     }
 
     function test_pricePerFullShare() public {

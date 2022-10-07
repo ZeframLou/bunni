@@ -62,6 +62,7 @@ abstract contract LiquidityManagement is ILiquidityManagement {
 
     /// @param key The Bunni position's key
     /// @param recipient The recipient of the liquidity position
+    /// @param payer The address that will pay the tokens
     /// @param amount0Desired The token0 amount to use
     /// @param amount1Desired The token1 amount to use
     /// @param amount0Min The minimum token0 amount to use
@@ -69,6 +70,7 @@ abstract contract LiquidityManagement is ILiquidityManagement {
     struct AddLiquidityParams {
         BunniKey key;
         address recipient;
+        address payer;
         uint256 amount0Desired;
         uint256 amount1Desired;
         uint256 amount0Min;
@@ -117,7 +119,7 @@ abstract contract LiquidityManagement is ILiquidityManagement {
                     token0: params.key.pool.token0(),
                     token1: params.key.pool.token1(),
                     fee: params.key.pool.fee(),
-                    payer: msg.sender
+                    payer: params.payer
                 })
             )
         );
