@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 
 import {IUniswapV3Factory} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
+import {CREATE3Factory} from "create3-factory/CREATE3Factory.sol";
+
 import "forge-std/Script.sol";
 
 import {BunniHub} from "../src/BunniHub.sol";
@@ -19,6 +21,9 @@ contract Deploy is Script {
         )
     {
         uint256 deployerPrivateKey = uint256(vm.envBytes32("PRIVATE_KEY"));
+        CREATE3Factory create3 = CREATE3Factory(
+            0x9fBB3DF7C40Da2e5A0dE984fFE2CCB7C47cd0ABf
+        );
         IUniswapV3Factory factory = IUniswapV3Factory(
             vm.envAddress("UNIV3_FACTORY")
         );
@@ -27,9 +32,27 @@ contract Deploy is Script {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        hub = new BunniHub(factory, owner, protocolFee);
-        lens = new BunniLens(hub);
-        migrator = new BunniMigrator(hub);
+        hub = BunniHub(
+            create3.deploy(
+                keccak256("BunniHub-v1.0.0"),
+                bytes.concat(
+                    type(BunniHub).creationCode,
+                    abi.encode(factory, owner, protocolFee)
+                )
+            )
+        );
+        lens = BunniLens(
+            create3.deploy(
+                keccak256("BunniLens-v1.0.0"),
+                bytes.concat(type(BunniLens).creationCode, abi.encode(hub))
+            )
+        );
+        migrator = BunniMigrator(
+            create3.deploy(
+                keccak256("BunniMigrator-v1.0.0"),
+                bytes.concat(type(BunniMigrator).creationCode, abi.encode(hub))
+            )
+        );
 
         vm.stopBroadcast();
     }
