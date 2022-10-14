@@ -34,7 +34,7 @@ contract Deploy is Script {
 
         hub = BunniHub(
             create3.deploy(
-                keccak256("BunniHub-v1.0.0"),
+                keccak256("BunniHub-v1.0.2"),
                 bytes.concat(
                     type(BunniHub).creationCode,
                     abi.encode(factory, owner, protocolFee)
@@ -43,13 +43,13 @@ contract Deploy is Script {
         );
         lens = BunniLens(
             create3.deploy(
-                keccak256("BunniLens-v1.0.0"),
+                keccak256("BunniLens-v1.0.2"),
                 bytes.concat(type(BunniLens).creationCode, abi.encode(hub))
             )
         );
         migrator = BunniMigrator(
             create3.deploy(
-                keccak256("BunniMigrator-v1.0.0"),
+                keccak256("BunniMigrator-v1.0.2"),
                 bytes.concat(type(BunniMigrator).creationCode, abi.encode(hub))
             )
         );

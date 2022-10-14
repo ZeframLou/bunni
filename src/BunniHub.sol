@@ -36,6 +36,7 @@ contract BunniHub is
 {
     uint256 internal constant WAD = 1e18;
     uint256 internal constant MAX_PROTOCOL_FEE = 5e17;
+    uint256 internal constant MIN_INITIAL_SHARES = 1e9;
 
     /// -----------------------------------------------------------
     /// Storage variables
@@ -432,6 +433,9 @@ contract BunniHub is
         if (existingShareSupply == 0) {
             // no existing shares, bootstrap at rate 1:1
             shares = addedLiquidity;
+            // prevent first staker from stealing funds of subsequent stakers
+            // see https://code4rena.com/reports/2022-01-sherlock/#h-01-first-user-can-steal-everyone-elses-tokens
+            require(shares > MIN_INITIAL_SHARES, "SMOL");
         } else {
             // shares = existingShareSupply * addedLiquidity / existingLiquidity;
             shares = FullMath.mulDiv(
@@ -439,6 +443,7 @@ contract BunniHub is
                 addedLiquidity,
                 existingLiquidity
             );
+            require(shares != 0, "0");
         }
 
         // mint shares to sender
