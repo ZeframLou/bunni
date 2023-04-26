@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import {IUniswapV3Factory} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 
-import {CREATE3Factory} from "create3-factory/CREATE3Factory.sol";
+import {CREATE3Factory} from "create3-factory/src/CREATE3Factory.sol";
 
 import "forge-std/Script.sol";
 

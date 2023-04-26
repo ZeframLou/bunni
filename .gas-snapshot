@@ -1,5 +1,5 @@
 BunniHubTest:testFail_uniswapV3MintCallback() (gas: 19324)
-BunniHubTest:test_compound() (gas: 827989)
+BunniHubTest:test_compound() (gas: 828052)
 BunniHubTest:test_deployBunniToken() (gas: 1010381)
 BunniHubTest:test_deposit() (gas: 433183)
 BunniHubTest:test_pricePerFullShare() (gas: 444424)
