@@ -50,3 +50,22 @@ npm run prepare
 forge install
 forge test
 ```
+
+## Known issues
+
+### Frontrunning the first deposit may steal 1/4 of the deposit
+
+When a new Bunni token is created and the first deposit is made to the Bunni token, it is possible for an attacker to frontrun it to steal ~1/4 of the deposit. Let the user's deposit liquidity amount be `L`.
+
+- Attacker mints `MIN_INITIAL_SHARES` Bunni tokens.
+- Attacker burns `MIN_INITIAL_SHARES - 1` Bunni tokens, resulting in a total supply of 1.
+- Attacker mints `L/2 + 1` liquidity to the Bunni token's Uniswap v3 position. This is possible because anyone can increase the liquidity of anyone else on Uniswap.
+- The user deposits `L` liquidity, giving them `L / (L/2 + 1) = floor(1.99...) = 1` Bunni tokens.
+- Now if the user burns the 1 Bunni token, they would receive `1/2 * (L + L/2 + 1) = floor(3L/4 + 1/2) = 3L/4` liquidity, meaning they lost `L/4` liquidity.
+
+While this attack is theoretically possible, it does not pose a practical problem.
+
+- The [Bunni website](https://bunni.pro) combines Bunni token creation and the first deposit into a single multicall, meaning it's impossible for an attacker to insert a transaction in between the two actions.
+- The [Bunni Zap](https://github.com/timeless-fi/bunni-zap) contract provides a `sharesMin` parameter, allowing the user to specify the minimum number of Bunni tokens received. This means if an attacker attempted to perform the aforementioned attack, the transaction will simply revert.
+
+However, smart contract integrators should be aware of this problem to avoid losing funds.
