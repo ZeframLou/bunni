@@ -69,3 +69,13 @@ While this attack is theoretically possible, it does not pose a practical proble
 - The [Bunni Zap](https://github.com/timeless-fi/bunni-zap) contract provides a `sharesMin` parameter, allowing the user to specify the minimum number of Bunni tokens received. This means if an attacker attempted to perform the aforementioned attack, the transaction will simply revert.
 
 However, smart contract integrators should be aware of this problem to avoid losing funds.
+
+### Compound calls can be sandwiched
+
+An attacker can perform a sandwich attack on compound calls by submitting the following package of transactions:
+
+- Buy a token from the Uniswap pool underlying the Bunni token
+- Compound fees earned by the Bunni token LPs into more liquidity
+- Sell the token back for slightly more tokens than started with
+
+This is the result of the intentional design decision to keep compounding permissionless, so there's no perfect solution to it. Realistically it's not going to be a problem since the amount of funds being compounded is usually small (on the same order of magnitude as the gas cost of compounding).
